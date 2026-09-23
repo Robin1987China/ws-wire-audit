@@ -4,7 +4,7 @@
 
 **文档性质**：面向交易所工程团队与第三方集成者的公开问题清单。
 **适用范围**：LBank 现货与合约的**公开** API（公开行情端点与公开技术文档）。本清单**不涉及**签名、账户、交易、资金类接口。
-**观察时间**：2026-09-21（UTC+8）。测量方法与环境见附录 A。
+**观察时间**：2026-09-21（UTC+8）；L-21 另于 2026-09-23 做过定向复测。测量方法与环境见附录 A。
 **证据等级**：**[A]** 官方文档原文 / 官方端点实测（可复现）｜**[B]** 第三方公开来源（开源库源码、机构级连接器文档）｜**[C]** 自媒体与聚合站线索（本次**未使用**）。
 **数字可回源**：本文每个数字都写明取得方式；读者无法独立复现的引用，已逐处标注「**待公开化**」并汇总于附录 C。
 
@@ -619,7 +619,7 @@ curl "https://api.lbank.info/v2/kline.do?symbol=btc_usdt&size=2&type=hour2&time=
 
 #### L-21 本次观测：现货 WS 握手未协商 `permessage-deflate`
 
-**证据等级**：A（官方端点实测，**n=1**）
+**证据等级**：A（官方端点实测；原 **n=1**，2026-09-23 定向复测后 **n≥3**）
 
 **问题**
 2026-09-21 的单次 WS 握手响应头中未出现 `Sec-WebSocket-Extensions`，即本次观测未协商压缩扩展。
@@ -635,6 +635,10 @@ curl "https://api.lbank.info/v2/kline.do?symbol=btc_usdt&size=2&type=hour2&time=
 
 **措辞限制（重要）**
 n=1，只能写「**本次观测未协商**」。**不能**据此推断「服务端不支持压缩」：判断服务端是否支持，需要客户端**主动 offer** 该扩展后再观察响应头。本清单未做该主动 offer 测试（判定方法见 §五）。**该主动 offer 测试已于 2026-09-22 补做**，结论见 `examples/02-permessage-deflate-negotiation.md` 与 `examples/03-lbank-deflate-ladder-probe.json`：LBank 对三档 offer 变体（含 `client_max_window_bits` 与 `server_max_window_bits=15` 变体）**全部拒绝**，`deflate_status = server_refused`。即：本条**当时**的「未协商」已被后续实验收窄为「服务端拒绝」，不再是悬置项。
+
+**2026-09-23 定向复测（n≥3）**
+2026-09-23 另做 2 次独立握手（18:50:53 / 18:56:51 GMT+8），显式 offer `Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits`：两次均返回 `HTTP/1.1 101 Switching Protocols`，且响应中**均无** `Sec-WebSocket-Extensions` 头（`deflate_status = server_refused`）。每次均为单连接、0 订阅、0 重试，读完响应头即断开（耗时 < 1 秒）。与 2026-09-22 的三档 ladder 观察方向一致 → **三次独立观测一致，本条的 n≥3**。
+**仍未判定**：该「拒绝」发生在 Cloudflare 边缘还是 LBank 源站，本文不下结论（定位到责任层需另行取证）。
 
 **影响（条件性）**
 若服务端支持而客户端未 offer，该差异可由客户端修复消除；若服务端不支持，则高频成交流的线级字节数会明显高于支持压缩的同类接口。

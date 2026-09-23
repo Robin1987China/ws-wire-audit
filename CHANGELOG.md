@@ -6,6 +6,29 @@ the source; this file is the human-readable record.
 
 Versions before v1.2 predate this changelog and are not reconstructed here.
 
+## English translation of the audit report — 2026-09-23 (docs only, no code change)
+- **`contract-audit.en.md` added:** a faithful English translation of
+  `contract-audit.md`. The Chinese original is kept unchanged alongside it and
+  remains the reference document. Finding IDs, numbers, URLs, field names and
+  API names are preserved verbatim; nothing was added or omitted.
+- **`measure_ws.py` is unchanged:** its sha256 is the same as recorded below, so
+  the tool's recorded identity is unaffected by this documentation addition.
+
+## L-21 re-observation — 2026-09-23 (docs only, no code change)
+
+- **L-21 evidence strengthened from n=1 to n≥3.** Two additional independent
+  handshakes were performed on 2026-09-23 against the public market-data
+  WebSocket endpoint, each explicitly offering `permessage-deflate`:
+  both completed with `101 Switching Protocols` and returned no
+  `Sec-WebSocket-Extensions` header, matching the three-variant ladder of
+  2026-09-22. Each run was a single connection with no subscription, no retry
+  and no account/trading call, closed once the response headers were read.
+- **Both language versions updated** (`contract-audit.md` and
+  `contract-audit.en.md`), including the note that the responsible layer
+  (Cloudflare edge vs origin) remains undetermined.
+- **No raw wire captures are published:** only the aggregate outcome is
+  recorded, per the evidence policy for this package.
+
 ## Documentation fixes — 2026-09-23 (post-v1.3, no behaviour change)
 
 - **`README.md` §4 caliber note:** fixed a mis-pointed cross-reference. The
