@@ -1,0 +1,12 @@
+# ws-wire-audit — dependencies
+#
+# None. This project uses only the Python 3 standard library:
+#   socket, ssl, zlib, struct, hashlib, base64, json, argparse, os, time, uuid
+#
+# Requires Python 3.7+ (tested on 3.11+/3.13). No pip install step is needed:
+#
+#   python3 measure_ws.py --selftest
+#
+# Deliberately NOT used: ccxt, websockets, aiohttp, requests.
+# The point of the tool is that its accounting rules are visible in one file
+# with no third-party measurement semantics layered in between.

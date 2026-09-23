@@ -1,0 +1,20 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Measurement outputs (local runs should not be committed by default)
+measure_ws_result.json
+*_result.json
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local environment
+.venv/
+venv/
+.env

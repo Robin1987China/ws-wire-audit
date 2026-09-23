@@ -1,0 +1,117 @@
+{
+  "title": "Same-caliber cross-venue comparison: LBank vs Binance public trade streams",
+  "produced_by": "measure_ws.py v1.3",
+  "observed_on": "2026-09-22",
+  "method": {
+    "identical_script": true,
+    "symbols": 159,
+    "duration_s": 600,
+    "connections_per_venue": 1,
+    "reconnect": false,
+    "concurrency": false,
+    "heartbeats_and_acks_excluded_from_business_metrics": true,
+    "sessions_run": "sequentially, not in parallel"
+  },
+  "note": "Two single sessions on one day from one egress. This is an observation, not a distribution; do not generalise the ratio without re-measuring.",
+  "sessions": [
+    {
+      "venue": "lbank",
+      "script_version": "v1.3",
+      "n_sessions": 1,
+      "window_s": 600,
+      "symbols_count": 159,
+      "symbols_seen": 159,
+      "connections": 1,
+      "reconnects": 0,
+      "business_messages": 54309,
+      "msg_per_s": 90.514,
+      "payload_bytes": 10246050,
+      "payload_bytes_per_s": 17076.6,
+      "wire_bytes": 10463286,
+      "wire_bytes_per_s": 17438.7,
+      "wire_bytes_total": 10463706,
+      "size_bytes": {
+        "min": 178,
+        "p50": 188,
+        "p90": 193,
+        "p99": 202,
+        "max": 209,
+        "mean": 188.7
+      },
+      "accounting": {
+        "note": "heartbeats, subscribe acks and control frames excluded from business metrics above",
+        "app_ping_frames": 10,
+        "subscribe_acks": 0,
+        "control_frames": 0,
+        "subscribe_messages_sent": 159,
+        "subscribe_errors": []
+      },
+      "compression": {
+        "deflate_offered": false,
+        "deflate_accepted": false,
+        "deflate_status": "not_offered",
+        "compressed_frames": 0,
+        "inflate_failures": 0
+      },
+      "integrity": {
+        "collection_complete": true,
+        "error": null,
+        "first_msg_latency_ms": 0.2
+      }
+    },
+    {
+      "venue": "binance",
+      "script_version": "v1.3",
+      "n_sessions": 1,
+      "window_s": 600,
+      "symbols_count": 159,
+      "symbols_seen": 159,
+      "connections": 1,
+      "reconnects": 0,
+      "business_messages": 225749,
+      "msg_per_s": 376.245,
+      "payload_bytes": 29850338,
+      "payload_bytes_per_s": 49750.1,
+      "wire_bytes": 30753286,
+      "wire_bytes_per_s": 51255.0,
+      "wire_bytes_total": 30753760,
+      "size_bytes": {
+        "min": 124,
+        "p50": 132,
+        "p90": 134,
+        "p99": 136,
+        "max": 138,
+        "mean": 132.2
+      },
+      "accounting": {
+        "note": "heartbeats, subscribe acks and control frames excluded from business metrics above",
+        "app_ping_frames": 0,
+        "subscribe_acks": 1,
+        "control_frames": 30,
+        "subscribe_messages_sent": 1,
+        "subscribe_errors": []
+      },
+      "compression": {
+        "deflate_offered": false,
+        "deflate_accepted": false,
+        "deflate_status": "not_offered",
+        "compressed_frames": 0,
+        "inflate_failures": 0
+      },
+      "integrity": {
+        "collection_complete": true,
+        "error": null,
+        "first_msg_latency_ms": 134.3
+      }
+    }
+  ],
+  "derived_ratios": {
+    "msg_per_s_binance_over_lbank": 4.16,
+    "wire_bytes_per_s_binance_over_lbank": 2.94,
+    "payload_p50_binance_over_lbank": 0.7
+  },
+  "reproduce": [
+    "python3 measure_ws.py --venue lbank   --symbols-file symbols159.json --duration 600 --out lbank_600s.json",
+    "python3 measure_ws.py --venue binance --symbols-file symbols159.json --duration 600 --out binance_600s.json"
+  ]
+}

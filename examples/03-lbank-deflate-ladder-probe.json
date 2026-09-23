@@ -1,0 +1,41 @@
+{
+  "title": "permessage-deflate offer ladder against LBank public WS endpoint",
+  "produced_by": "measure_ws.py v1.3",
+  "observed_on": "2026-09-22",
+  "venue": "lbank",
+  "offers_sent_in_order": [
+    "permessage-deflate",
+    "permessage-deflate; client_max_window_bits",
+    "permessage-deflate; client_max_window_bits=15; server_max_window_bits=15"
+  ],
+  "probe_results": [
+    {
+      "offer": "permessage-deflate",
+      "status": "server_refused"
+    },
+    {
+      "offer": "permessage-deflate; client_max_window_bits",
+      "status": "server_refused"
+    },
+    {
+      "offer": "permessage-deflate; client_max_window_bits=15; server_max_window_bits=15",
+      "status": "server_refused"
+    }
+  ],
+  "all_refused": true,
+  "measured_session": {
+    "deflate_offered": true,
+    "deflate_accepted": false,
+    "deflate_status": "server_refused",
+    "deflate_offer_source": "ladder-fallback-first-offer",
+    "compressed_frames": 0,
+    "inflate_failures": 0,
+    "wire_bytes": 3906417,
+    "payload_bytes": 3825357
+  },
+  "response_header_values": [],
+  "interpretation": "The server refused every offer variant. Because the ladder sends a bare 'permessage-deflate' token as well as parameterised variants, the refusal cannot be explained by a malformed offer from the client. deflate_offer_source confirms the measured session itself carried the offer, distinguishing 'server refused' from 'we never asked'.",
+  "reproduce": [
+    "python3 measure_ws.py --venue lbank --deflate --deflate-ladder --duration 180"
+  ]
+}
