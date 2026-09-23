@@ -6,6 +6,61 @@ the source; this file is the human-readable record.
 
 Versions before v1.2 predate this changelog and are not reconstructed here.
 
+## v1.4 — 2026-09-23
+
+Behaviour changes to `measure_ws.py` (sha256 after release:
+`6fc6d43d6fdc99c97da0bf8dfffcb983bedc0f3bbd71ddc337d2dd999413124b`).
+
+### New CLI flags
+- **`--probe`** — expose the handshake-only path that `run_session(probe_only=...)`
+  already supported internally: connect, negotiate (honouring `--deflate` /
+  `--deflate-ladder`), close immediately. No subscription, no collection.
+  Fast connectivity + compression-acceptance check for scripts.
+- **`--strict`** — exit code **1** when any measured session has `error`,
+  `collection_complete=false`, `inflate_failures > 0` or
+  `rsv1_without_deflate > 0`; exit 0 otherwise. Previously a session that
+  errored still produced exit code 0, which made automation treat a broken
+  run as clean.
+- **`--version`** — print `v1.4` and exit.
+
+### Fixes
+- **RSV1-without-negotiation counted, not silently mis-recorded.** A server
+  frame with RSV1=1 but no negotiated `permessage-deflate` is an RFC 6455
+  §5.2 violation; its payload is ciphertext, not business JSON. Previously the
+  reader passed it through as-is, silently corrupting the payload size
+  distribution with no flag. v1.4 counts it in the new
+  `rsv1_without_deflate` field (surfaced in the JSON result and the console
+  summary like `inflate_failures`).
+- **Symbols-file errors are clean exits.** A missing or malformed
+  `--symbols-file` previously raised a raw `OSError` / `JSONDecodeError`
+  traceback; now `SystemExit` with an actionable one-line message.
+- **Dead code removed:** the no-op `if "pair" in j and key == "?"` branch in
+  the business-message classifier, the vestigial `pass` block in
+  `run_session`, the unused `probe` local and `cfg` local, and an unused
+  `import zlib as _z` inside `--selftest`.
+- **Doc truth:** README/requirements claimed Python 3.7+; the code uses
+  `statistics.fmean` (3.8+) — corrected to 3.8+ in README, requirements and
+  the new `pyproject.toml` (`requires-python = ">=3.8"`).
+
+### Packaging & tests (new)
+- **`pyproject.toml`** — zero runtime dependencies (the tool's design
+  contract is a single stdlib-only file, so packaging adds none), console
+  script `ws-wire-audit = measure_ws:main`, pytest + ruff (`F`, `E9`)
+  configuration. `pip install .` then `ws-wire-audit --version`.
+- **`tests/test_measure_ws.py`** — **79 offline pytest cases** (zero
+  network): the built-in 35-assertion `--selftest` logic ported to pytest
+  plus new cases for the frame reader (control frames, pong echo, extended
+  lengths, masked-frame tolerance, deflate window bits incl. the
+  RFC-7692-8-bit case, per-message no-context-takeover, inflate failure
+  fallback, RSV1-without-negotiation), session accounting (heartbeat/ack
+  segregation, error-path data retention, ladder offer decisions incl.
+  accepted-offer reuse, probe-only mode, active Bybit keepalive, empty-session
+  distribution), symbols resolution (plain/JSON/int forms, per-venue dicts,
+  clean errors), and the CLI (strict exit codes, probe forwarding, version).
+- **`.gitignore`** extended for packaging/test artifacts.
+- Regression checks: `--selftest` 35/35 PASS; `pytest` 79 passed; `ruff
+  check` clean on source and tests.
+
 ## English translation of the audit report — 2026-09-23 (docs only, no code change)
 - **`contract-audit.en.md` added:** a faithful English translation of
   `contract-audit.md`. The Chinese original is kept unchanged alongside it and

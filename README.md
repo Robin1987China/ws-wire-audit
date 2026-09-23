@@ -62,7 +62,7 @@ a measurement instrument, not a benchmark, and not a load generator.
 
 ## 3. How to use
 
-Requires **Python 3 only** — standard library (`socket`, `ssl`, `zlib`,
+Requires **Python 3.8+** — standard library (`socket`, `ssl`, `zlib`,
 `struct`, `hashlib`, `base64`, `json`). No `ccxt`, no `websockets`, no
 `aiohttp`. See `requirements.txt`.
 
@@ -101,6 +101,25 @@ handshake. `--deflate-ladder` walks a small ladder of offer variants
 can be separated from *"our offer was malformed"*. Both report
 `deflate_measurement_offer_source` so a reader can tell whether the **measured**
 session itself carried the offer or only the probe did.
+
+### Probe & automation flags (v1.4)
+
+```console
+$ python3 measure_ws.py --probe --venue lbank                 # handshake only, no subscribe/collect
+$ python3 measure_ws.py --probe --deflate --venue lbank       # connectivity + compression acceptance
+$ python3 measure_ws.py --venue lbank --duration 600 --strict  # exit 1 if any session misbehaved
+$ python3 measure_ws.py --version
+```
+
+- `--probe` opens the connection and performs the handshake (with the offer
+  selected by `--deflate` / `--deflate-ladder`), then closes immediately —
+  no subscription, no collection. It is the fast path for "can I reach this
+  endpoint and does it accept compression?" without a full session.
+- `--strict` exits with code **1** when any measured session ended with an
+  `error`, `collection_complete=false`, `inflate_failures > 0` or
+  `rsv1_without_deflate > 0`; exit 0 otherwise. Intended for scripts and
+  monitoring that must not treat a broken session as a clean run.
+- `--version` prints the tool version (`v1.4`) and exits.
 
 ### Multi-symbol session (large watchlists)
 
@@ -231,8 +250,11 @@ ws-wire-audit/
 │   ├── 01-lbank-vs-binance-159pairs-600s.json
 │   ├── 02-permessage-deflate-negotiation.md
 │   └── 03-lbank-deflate-ladder-probe.json
-├── contract-audit.md    # companion report: LBank public API contract issues
-└── SPEC.md              # proposed four-declaration rule for cross-venue comparison
+├── pyproject.toml        # packaging (zero runtime deps) + pytest/ruff config
+├── tests/                # offline pytest suite (79 cases, zero network)
+│   └── test_measure_ws.py
+├── contract-audit.md     # companion report: LBank public API contract issues
+└── SPEC.md               # proposed four-declaration rule for cross-venue comparison
 ```
 
 ### ✅ Publication status
@@ -255,9 +277,26 @@ program behaviour. Verified after sanitisation:
 $ # (internal-term scan: run privately; the term list is not reproduced here)
 # zero matches
 $ python3 measure_ws.py --selftest     # 自测结果：全部通过 (35 assertions)
+$ python3 -m pytest tests/ -q          # v1.4 offline suite: 79 passed
 $ shasum -a 256 measure_ws.py
-f07f4a5abd9f387494590e426e2afcb2bf03d4464b273b64bfab453ef560806e  measure_ws.py
+6fc6d43d6fdc99c97da0bf8dfffcb983bedc0f3bbd71ddc337d2dd999413124b  measure_ws.py
 ```
+
+### `tests/` and packaging (v1.4)
+
+The tool stays a single stdlib-only file — that is its design contract ("the
+accounting rules are visible in one file"). What v1.4 adds around it:
+
+- `pyproject.toml`: zero runtime dependencies, `ws-wire-audit` console script
+  (`python3 -m pip install .` then `ws-wire-audit --version`), pytest and
+  ruff (`F`, `E9` — bug-catching only) configuration.
+- `tests/test_measure_ws.py`: **79 offline pytest cases** (zero network)
+  covering the handshake/extension parser, the frame reader (control frames,
+  pong echo, deflate window bits, no-context-takeover, inflate failures,
+  RSV1-without-negotiation), session accounting (heartbeat/ack segregation,
+  error-path data retention, ladder offer decisions, probe-only mode) and the
+  CLI (strict exit codes, symbols-file errors). The built-in `--selftest`
+  remains the 35-assertion smoke check.
 
 ### `contract-audit.md`
 

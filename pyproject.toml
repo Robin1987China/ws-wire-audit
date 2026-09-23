@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ws-wire-audit"
+version = "1.4.0"
+description = "Stdlib-only wire-level traffic and compression-negotiation measurement for public market-data WebSocket feeds"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [{name = "Robin1987China"}]
+keywords = ["websocket", "wire-level", "measurement", "permessage-deflate", "market-data"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Monitoring",
+    "Topic :: Internet :: WWW/HTTP",
+]
+# Deliberately empty: the tool's accounting rules must stay visible in one
+# stdlib-only file with no third-party measurement semantics layered in.
+dependencies = []
+
+[project.scripts]
+ws-wire-audit = "measure_ws:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff"]
+
+[tool.setuptools]
+py-modules = ["measure_ws"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["F", "E9"]
