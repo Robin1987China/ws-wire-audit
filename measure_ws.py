@@ -302,7 +302,8 @@ class WSReader:
         self.compressed_frames = 0
         self.inflate_failures = 0
         # v1.4：服务端在**未协商**压缩时仍置 RSV1（RFC 6455 §5.2 违规）——
-        # 该帧负载实为密文，若按原文计数会静默污染尺寸分布；单独计数以便判读
+        # 该帧负载语义未定义（通常为原始 DEFLATE 流，而非业务明文）；
+        # 若按原文计数会静默污染尺寸分布，单独计数以便判读
         self.rsv1_without_deflate = 0
         self._window = -15
         self._no_context_takeover = False
@@ -433,8 +434,10 @@ class WSReader:
             self.compressed_frames += 1
             payload, _ok = self._inflate(payload)
         elif rsv1:
-            # v1.4：RSV1=1 但未协商压缩 —— 协议违规帧，负载是密文不是业务 JSON。
-            # 不尝试解压（没有协商参数，解了也是错的），单独计数暴露给判读。
+            # v1.4：RSV1=1 但未协商压缩 —— 协议违规帧，负载语义未定义
+            # （通常为原始 DEFLATE 流，而非业务明文）。RFC 6455 §5.2 要求
+            # 此时**关闭连接**；本工具为持续测量刻意不关闭，改为单独计数
+            # （rsv1_without_deflate）暴露给判读。不尝试解压（没有协商参数）。
             self.rsv1_without_deflate += 1
 
         return ("data", opcode, payload, wire)

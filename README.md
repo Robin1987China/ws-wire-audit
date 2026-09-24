@@ -24,7 +24,7 @@ market-data endpoint and records, per session:
 |---|---|
 | Throughput | `business_messages`, `msg_per_s`, `payload_bytes`, `wire_bytes`, `wire_bytes_total` (incl. control frames) |
 | Distribution | `size_bytes` — min / p50 / p90 / p99 / max / mean of per-message payload sizes |
-| Compression | `deflate_offered`, `deflate_accepted`, `deflate_status`, offer/response header text, `compressed_frames`, `inflate_failures` |
+| Compression | `deflate_offered`, `deflate_accepted`, `deflate_status`, offer/response header text, `compressed_frames`, `inflate_failures`, `rsv1_without_deflate` |
 | Accounting hygiene | `app_ping_frames`, `heartbeat_pongs_received`, `subscribe_acks`, `subscribe_errors`, `control_frames` |
 | Integrity | `collection_complete`, `error`, `first_msg_latency_ms`, `sec_websocket_accept_valid` |
 
@@ -115,6 +115,8 @@ $ python3 measure_ws.py --version
   selected by `--deflate` / `--deflate-ladder`), then closes immediately —
   no subscription, no collection. It is the fast path for "can I reach this
   endpoint and does it accept compression?" without a full session.
+  Note: `--probe` ignores `--pair` (there is no subscribe step for an override
+  to apply to), but the result is still written to `--out` like a normal run.
 - `--strict` exits with code **1** when any measured session ended with an
   `error`, `collection_complete=false`, `inflate_failures > 0` or
   `rsv1_without_deflate > 0`; exit 0 otherwise. Intended for scripts and
@@ -208,29 +210,38 @@ It is designed to be honest about what that does and does not support.
 2. **No fragmentation reassembly.** The reader treats *one frame = one
    message*. If a server fragments a message under `permessage-deflate`, each
    fragment is counted separately and per-frame inflate may fail, falling back
-   to ciphertext size → inflated counts. Public trade streams use short frames,
+   to the undefined-semantics payload size (typically a raw DEFLATE stream) →
+   inflated counts. Public trade streams use short frames,
    but **this is an unhandled gap, not a verified non-issue.**
 3. **Inflate failures are surfaced, not hidden.** Since v1.2 an inflate failure
-   increments `inflate_failures` instead of silently reporting ciphertext size;
+   increments `inflate_failures` instead of silently reporting the
+   undefined-semantics payload size (typically a raw DEFLATE stream);
    a non-zero value invalidates the size distribution for that session.
-4. **`permessage-deflate` negotiation parameters are partially honoured.**
+4. **`rsv1_without_deflate`.** A server frame with RSV1=1 without negotiated
+   `permessage-deflate` violates RFC 6455 §5.2, which requires *failing the
+   WebSocket connection*. This tool deliberately continues in order to keep
+   measuring, and counts such frames in `rsv1_without_deflate` instead; their
+   payload semantics are undefined (typically a raw DEFLATE stream, not
+   business plaintext), so a non-zero value also invalidates the size
+   distribution for that session.
+5. **`permessage-deflate` negotiation parameters are partially honoured.**
    v1.3 parses and applies `server_no_context_takeover` and
    `server_max_window_bits` (per-message inflater reset and window bits), but
    only the server→client direction is decompressed; client→server frames are
    always sent uncompressed (RSV1=0), which RFC 7692 permits.
-5. **Batching limits are configuration that drifts.** `subscribe_batch_size`
+6. **Batching limits are configuration that drifts.** `subscribe_batch_size`
    and endpoint paths are hard-coded per venue and reflect the public docs **at
    the time of writing**. Re-verify before a run; a venue silently lowering its
    per-frame symbol limit changes `subscribe_acks` and error counts, not the
    wire-level message rate.
-6. **Only public endpoints.** No API keys, no signing, no private channels, no
+7. **Only public endpoints.** No API keys, no signing, no private channels, no
    order or funding endpoints. Single connection, no reconnect, no concurrency,
    no load testing: this is a *measurement* tool, not a stress tool.
-7. **Egress matters.** Some venues gate public API access by egress region and
+8. **Egress matters.** Some venues gate public API access by egress region and
    will return different results (or refuse connections) from a different
    network path. Record your egress; results are not portable across it without
    re-measurement.
-8. **`Sec-WebSocket-Accept` is validated and recorded, not enforced.** A
+9. **`Sec-WebSocket-Accept` is validated and recorded, not enforced.** A
    handshake-validation failure is reported so a reader can judge it; the
    session is not aborted, because a measurement run prioritises collecting
    data over refusing to run.

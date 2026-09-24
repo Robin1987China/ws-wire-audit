@@ -2,14 +2,16 @@
 
 Version history for `measure_ws.py`, the single-file, stdlib-only measurement
 tool in this package. The tool's version is also exposed as `SCRIPT_VERSION` in
-the source; this file is the human-readable record.
+the source; this file is the human-readable record. Note: `pyproject.toml`
+carries the PEP 440 form of the same version (`v1.4` ↔ `1.4.0`) — bump both
+plus `SCRIPT_VERSION` together on each release.
 
 Versions before v1.2 predate this changelog and are not reconstructed here.
 
 ## v1.4 — 2026-09-23
 
 Behaviour changes to `measure_ws.py` (sha256 after release:
-`6fc6d43d6fdc99c97da0bf8dfffcb983bedc0f3bbd71ddc337d2dd999413124b`).
+`b50f66b1c9b2496a90ca9134a0f3bff81c0a157332ac3ba3f4c7ab4c6bdede48`).
 
 ### New CLI flags
 - **`--probe`** — expose the handshake-only path that `run_session(probe_only=...)`
@@ -26,11 +28,13 @@ Behaviour changes to `measure_ws.py` (sha256 after release:
 ### Fixes
 - **RSV1-without-negotiation counted, not silently mis-recorded.** A server
   frame with RSV1=1 but no negotiated `permessage-deflate` is an RFC 6455
-  §5.2 violation; its payload is ciphertext, not business JSON. Previously the
-  reader passed it through as-is, silently corrupting the payload size
-  distribution with no flag. v1.4 counts it in the new
-  `rsv1_without_deflate` field (surfaced in the JSON result and the console
-  summary like `inflate_failures`).
+  §5.2 violation; its payload's *semantics are undefined* — typically a raw
+  DEFLATE stream, not business plaintext. Previously the reader passed it
+  through as-is, silently corrupting the payload size distribution with no
+  flag. RFC 6455 §5.2 requires *failing the WebSocket connection* on such a
+  frame; this tool deliberately continues in order to keep measuring, and
+  instead counts it in the new `rsv1_without_deflate` field (surfaced in the
+  JSON result and the console summary like `inflate_failures`).
 - **Symbols-file errors are clean exits.** A missing or malformed
   `--symbols-file` previously raised a raw `OSError` / `JSONDecodeError`
   traceback; now `SystemExit` with an actionable one-line message.
