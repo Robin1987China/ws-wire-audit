@@ -290,7 +290,7 @@ $ # (internal-term scan: run privately; the term list is not reproduced here)
 $ python3 measure_ws.py --selftest     # 自测结果：全部通过 (35 assertions)
 $ python3 -m pytest tests/ -q          # v1.4 offline suite: 79 passed
 $ shasum -a 256 measure_ws.py
-6fc6d43d6fdc99c97da0bf8dfffcb983bedc0f3bbd71ddc337d2dd999413124b  measure_ws.py
+b50f66b1c9b2496a90ca9134a0f3bff81c0a157332ac3ba3f4c7ab4c6bdede48  measure_ws.py
 ```
 
 ### `tests/` and packaging (v1.4)
