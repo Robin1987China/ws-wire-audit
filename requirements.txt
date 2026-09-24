@@ -3,9 +3,11 @@
 # None. This project uses only the Python 3 standard library:
 #   socket, ssl, zlib, struct, hashlib, base64, json, argparse, os, time, uuid
 #
-# Requires Python 3.7+ (tested on 3.11+/3.13). No pip install step is needed:
+# Requires Python 3.8+ (tested on 3.11+/3.13; statistics.fmean needs 3.8).
+# No pip install step is needed:
 #
 #   python3 measure_ws.py --selftest
+#   python3 -m pytest tests/ -q        # v1.4 offline suite
 #
 # Deliberately NOT used: ccxt, websockets, aiohttp, requests.
 # The point of the tool is that its accounting rules are visible in one file

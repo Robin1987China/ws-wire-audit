@@ -24,7 +24,7 @@ market-data endpoint and records, per session:
 |---|---|
 | Throughput | `business_messages`, `msg_per_s`, `payload_bytes`, `wire_bytes`, `wire_bytes_total` (incl. control frames) |
 | Distribution | `size_bytes` — min / p50 / p90 / p99 / max / mean of per-message payload sizes |
-| Compression | `deflate_offered`, `deflate_accepted`, `deflate_status`, offer/response header text, `compressed_frames`, `inflate_failures` |
+| Compression | `deflate_offered`, `deflate_accepted`, `deflate_status`, offer/response header text, `compressed_frames`, `inflate_failures`, `rsv1_without_deflate` |
 | Accounting hygiene | `app_ping_frames`, `heartbeat_pongs_received`, `subscribe_acks`, `subscribe_errors`, `control_frames` |
 | Integrity | `collection_complete`, `error`, `first_msg_latency_ms`, `sec_websocket_accept_valid` |
 
@@ -62,7 +62,7 @@ a measurement instrument, not a benchmark, and not a load generator.
 
 ## 3. How to use
 
-Requires **Python 3 only** — standard library (`socket`, `ssl`, `zlib`,
+Requires **Python 3.8+** — standard library (`socket`, `ssl`, `zlib`,
 `struct`, `hashlib`, `base64`, `json`). No `ccxt`, no `websockets`, no
 `aiohttp`. See `requirements.txt`.
 
@@ -101,6 +101,27 @@ handshake. `--deflate-ladder` walks a small ladder of offer variants
 can be separated from *"our offer was malformed"*. Both report
 `deflate_measurement_offer_source` so a reader can tell whether the **measured**
 session itself carried the offer or only the probe did.
+
+### Probe & automation flags (v1.4)
+
+```console
+$ python3 measure_ws.py --probe --venue lbank                 # handshake only, no subscribe/collect
+$ python3 measure_ws.py --probe --deflate --venue lbank       # connectivity + compression acceptance
+$ python3 measure_ws.py --venue lbank --duration 600 --strict  # exit 1 if any session misbehaved
+$ python3 measure_ws.py --version
+```
+
+- `--probe` opens the connection and performs the handshake (with the offer
+  selected by `--deflate` / `--deflate-ladder`), then closes immediately —
+  no subscription, no collection. It is the fast path for "can I reach this
+  endpoint and does it accept compression?" without a full session.
+  Note: `--probe` ignores `--pair` (there is no subscribe step for an override
+  to apply to), but the result is still written to `--out` like a normal run.
+- `--strict` exits with code **1** when any measured session ended with an
+  `error`, `collection_complete=false`, `inflate_failures > 0` or
+  `rsv1_without_deflate > 0`; exit 0 otherwise. Intended for scripts and
+  monitoring that must not treat a broken session as a clean run.
+- `--version` prints the tool version (`v1.4`) and exits.
 
 ### Multi-symbol session (large watchlists)
 
@@ -189,29 +210,38 @@ It is designed to be honest about what that does and does not support.
 2. **No fragmentation reassembly.** The reader treats *one frame = one
    message*. If a server fragments a message under `permessage-deflate`, each
    fragment is counted separately and per-frame inflate may fail, falling back
-   to ciphertext size → inflated counts. Public trade streams use short frames,
+   to the undefined-semantics payload size (typically a raw DEFLATE stream) →
+   inflated counts. Public trade streams use short frames,
    but **this is an unhandled gap, not a verified non-issue.**
 3. **Inflate failures are surfaced, not hidden.** Since v1.2 an inflate failure
-   increments `inflate_failures` instead of silently reporting ciphertext size;
+   increments `inflate_failures` instead of silently reporting the
+   undefined-semantics payload size (typically a raw DEFLATE stream);
    a non-zero value invalidates the size distribution for that session.
-4. **`permessage-deflate` negotiation parameters are partially honoured.**
+4. **`rsv1_without_deflate`.** A server frame with RSV1=1 without negotiated
+   `permessage-deflate` violates RFC 6455 §5.2, which requires *failing the
+   WebSocket connection*. This tool deliberately continues in order to keep
+   measuring, and counts such frames in `rsv1_without_deflate` instead; their
+   payload semantics are undefined (typically a raw DEFLATE stream, not
+   business plaintext), so a non-zero value also invalidates the size
+   distribution for that session.
+5. **`permessage-deflate` negotiation parameters are partially honoured.**
    v1.3 parses and applies `server_no_context_takeover` and
    `server_max_window_bits` (per-message inflater reset and window bits), but
    only the server→client direction is decompressed; client→server frames are
    always sent uncompressed (RSV1=0), which RFC 7692 permits.
-5. **Batching limits are configuration that drifts.** `subscribe_batch_size`
+6. **Batching limits are configuration that drifts.** `subscribe_batch_size`
    and endpoint paths are hard-coded per venue and reflect the public docs **at
    the time of writing**. Re-verify before a run; a venue silently lowering its
    per-frame symbol limit changes `subscribe_acks` and error counts, not the
    wire-level message rate.
-6. **Only public endpoints.** No API keys, no signing, no private channels, no
+7. **Only public endpoints.** No API keys, no signing, no private channels, no
    order or funding endpoints. Single connection, no reconnect, no concurrency,
    no load testing: this is a *measurement* tool, not a stress tool.
-7. **Egress matters.** Some venues gate public API access by egress region and
+8. **Egress matters.** Some venues gate public API access by egress region and
    will return different results (or refuse connections) from a different
    network path. Record your egress; results are not portable across it without
    re-measurement.
-8. **`Sec-WebSocket-Accept` is validated and recorded, not enforced.** A
+9. **`Sec-WebSocket-Accept` is validated and recorded, not enforced.** A
    handshake-validation failure is reported so a reader can judge it; the
    session is not aborted, because a measurement run prioritises collecting
    data over refusing to run.
@@ -231,8 +261,11 @@ ws-wire-audit/
 │   ├── 01-lbank-vs-binance-159pairs-600s.json
 │   ├── 02-permessage-deflate-negotiation.md
 │   └── 03-lbank-deflate-ladder-probe.json
-├── contract-audit.md    # companion report: LBank public API contract issues
-└── SPEC.md              # proposed four-declaration rule for cross-venue comparison
+├── pyproject.toml        # packaging (zero runtime deps) + pytest/ruff config
+├── tests/                # offline pytest suite (79 cases, zero network)
+│   └── test_measure_ws.py
+├── contract-audit.md     # companion report: LBank public API contract issues
+└── SPEC.md               # proposed four-declaration rule for cross-venue comparison
 ```
 
 ### ✅ Publication status
@@ -255,9 +288,26 @@ program behaviour. Verified after sanitisation:
 $ # (internal-term scan: run privately; the term list is not reproduced here)
 # zero matches
 $ python3 measure_ws.py --selftest     # 自测结果：全部通过 (35 assertions)
+$ python3 -m pytest tests/ -q          # v1.4 offline suite: 79 passed
 $ shasum -a 256 measure_ws.py
-f07f4a5abd9f387494590e426e2afcb2bf03d4464b273b64bfab453ef560806e  measure_ws.py
+6fc6d43d6fdc99c97da0bf8dfffcb983bedc0f3bbd71ddc337d2dd999413124b  measure_ws.py
 ```
+
+### `tests/` and packaging (v1.4)
+
+The tool stays a single stdlib-only file — that is its design contract ("the
+accounting rules are visible in one file"). What v1.4 adds around it:
+
+- `pyproject.toml`: zero runtime dependencies, `ws-wire-audit` console script
+  (`python3 -m pip install .` then `ws-wire-audit --version`), pytest and
+  ruff (`F`, `E9` — bug-catching only) configuration.
+- `tests/test_measure_ws.py`: **79 offline pytest cases** (zero network)
+  covering the handshake/extension parser, the frame reader (control frames,
+  pong echo, deflate window bits, no-context-takeover, inflate failures,
+  RSV1-without-negotiation), session accounting (heartbeat/ack segregation,
+  error-path data retention, ladder offer decisions, probe-only mode) and the
+  CLI (strict exit codes, symbols-file errors). The built-in `--selftest`
+  remains the 35-assertion smoke check.
 
 ### `contract-audit.md`
 

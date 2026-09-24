@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 measure_ws.py —— public market-data WebSocket wire-level traffic measurement
-版本 v1.3（2026-09-22）：修三处硬缺陷（D1 压缩协商判定 / D2 多交易对规模 / D3 测量会话未带 offer）；见同目录 CHANGELOG.md。
+版本 v1.4（2026-09-23）：新增 --probe / --strict / --version；RSV1-未协商压缩单独计数；
+               坏 symbols 文件友好报错；去死代码；见同目录 CHANGELOG.md。
 
 目的
     量化 CCXT #27008 的核心现象：「lbank watch_trades 带宽与 CPU 消耗显著高于其他所」。
@@ -94,7 +95,7 @@ import time
 import zlib
 
 # ---------------------------------------------------------------- 常量
-SCRIPT_VERSION = "v1.3"
+SCRIPT_VERSION = "v1.4"
 DEFAULT_SAMPLE_ASSETS = [
     "BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX", "LINK", "LTC",
     "DOT", "TRX", "MATIC", "SHIB", "UNI", "ATOM", "ETC", "FIL", "APT", "ARB",
@@ -300,6 +301,10 @@ class WSReader:
         # 压缩统计
         self.compressed_frames = 0
         self.inflate_failures = 0
+        # v1.4：服务端在**未协商**压缩时仍置 RSV1（RFC 6455 §5.2 违规）——
+        # 该帧负载语义未定义（通常为原始 DEFLATE 流，而非业务明文）；
+        # 若按原文计数会静默污染尺寸分布，单独计数以便判读
+        self.rsv1_without_deflate = 0
         self._window = -15
         self._no_context_takeover = False
         if deflate_params is not None:
@@ -428,6 +433,12 @@ class WSReader:
         if rsv1 and self._inflater is not None:     # permessage-deflate（服务端→我们）
             self.compressed_frames += 1
             payload, _ok = self._inflate(payload)
+        elif rsv1:
+            # v1.4：RSV1=1 但未协商压缩 —— 协议违规帧，负载语义未定义
+            # （通常为原始 DEFLATE 流，而非业务明文）。RFC 6455 §5.2 要求
+            # 此时**关闭连接**；本工具为持续测量刻意不关闭，改为单独计数
+            # （rsv1_without_deflate）暴露给判读。不尝试解压（没有协商参数）。
+            self.rsv1_without_deflate += 1
 
         return ("data", opcode, payload, wire)
 
@@ -452,17 +463,22 @@ def resolve_symbols(venue: str, args) -> list:
     优先顺序：--raw-symbols（venue 原生写法）> --symbols-file > --symbols > 内置单对。
     --symbols 也接受**纯整数**（= 用内置样表取前 N 个，N 超过内置表长度则报错并提示用 --symbols-file）。
     """
-    cfg = VENUES[venue]
     quote = args.quote
     if args.raw_symbols:
         syms = [s.strip() for s in args.raw_symbols.split(",") if s.strip()]
         return syms, {"source": "raw-symbols", "note": "调用方直接给出的 venue 原生交易对，未做格式转换"}
     if args.symbols_file:
-        raw = open(args.symbols_file, "r", encoding="utf-8").read()
+        try:
+            raw = open(args.symbols_file, "r", encoding="utf-8").read()
+        except OSError as e:
+            raise SystemExit(f"--symbols-file 打不开 {args.symbols_file}: {e}")
         txt = raw.strip()
         assets, per_venue = None, None
         if txt.startswith("{") or txt.startswith("["):
-            data = json.loads(txt)
+            try:
+                data = json.loads(txt)
+            except json.JSONDecodeError as e:
+                raise SystemExit(f"--symbols-file JSON 解析失败 {args.symbols_file}: {e}")
             if isinstance(data, list):
                 assets = [str(x) for x in data]
             elif isinstance(data, dict):
@@ -673,8 +689,6 @@ def run_session(venue: str, seconds: int, host=None, path=None, offer_headers=No
     if path:
         cfg["path"] = path
     offers = list(offer_headers or [])
-    if len(offers) > 1 and cfg.get("path_multi") and symbols:
-        pass  # path 在多 stream 时由下方统一处理
 
     res = {
         "venue": venue,
@@ -708,7 +722,6 @@ def run_session(venue: str, seconds: int, host=None, path=None, offer_headers=No
     t_start = time.time()
     reader = None
     t_subscribed = None
-    probe = None
     app_pings_sent = 0         # 我们对入站 app-ping 回的 pong（LBank）
     app_pongs_sent = 0         # 我们对入站 op=ping 回的 pong（Bybit 兼容分支）
     heartbeat_pings_sent = 0   # 我们**主动**发的心跳（Bybit v5 必需，v1.1 修 V-09）
@@ -749,6 +762,7 @@ def run_session(venue: str, seconds: int, host=None, path=None, offer_headers=No
             "control_wire_bytes": reader.control_wire_bytes,
             "compressed_frames": reader.compressed_frames,
             "inflate_failures": reader.inflate_failures,
+            "rsv1_without_deflate": reader.rsv1_without_deflate,
             "msg_per_s": round(n / elapsed, 3) if elapsed else None,
             "payload_bytes_per_s": round(reader.payload_bytes / elapsed, 1) if elapsed else None,
             "wire_bytes_per_s": round(reader.wire_bytes / elapsed, 1) if elapsed else None,
@@ -905,11 +919,10 @@ def run_session(venue: str, seconds: int, host=None, path=None, offer_headers=No
                     if len(subscribe_errors) < 50:
                         subscribe_errors.append(payload.decode("utf-8", "replace"))
                 continue
-            # 业务消息：按 type/op/e/topic 归类
+            # 业务消息：按 type/op/e/topic 归类。v1.4：删除 v1.3 遗留的
+            # `if "pair" in j and key == "?"` 死分支（key 已为 "?"，赋值是空操作）。
             if isinstance(j, dict):
                 key = j.get("type") or j.get("op") or j.get("e") or j.get("topic") or "?"
-                if "pair" in j and key == "?":
-                    key = "?"
             else:
                 key = "non-json"
             reader.record_business(payload, wire, symbol=extract_symbol(j))
@@ -934,7 +947,6 @@ def _selftest():
 
     本函数不建立任何真实连接。
     """
-    import types  # noqa
     fails = []
 
     def check(label, cond, detail=""):
@@ -1037,7 +1049,6 @@ def _selftest():
     # T4b：offer + 服务端回 permessage-deflate（带 server_no_context_takeover）→ 两条**独立压缩**消息都要解对
     mA = b'{"e":"trade","s":"BTCUSDT","q":"1"}'
     mB = b'{"e":"trade","s":"ETHUSDT","q":"2"}'
-    import zlib as _z
     # 每消息独立压缩 → 模拟 server_no_context_takeover
     f = mkframe(0x1, deflate_indep(mA), rsv1=True) + mkframe(0x1, deflate_indep(mB), rsv1=True)
     r2 = run_fake(hdr("Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover") + f,
@@ -1171,20 +1182,36 @@ def main():
                     help="HTTP CONNECT 代理（形如 http://127.0.0.1:7890）；留空=直连。socks5 不支持")
     ap.add_argument("--out", default="measure_ws_result.json")
     ap.add_argument("--selftest", action="store_true", help="只跑离线自测（零网络），不连任何服务端")
+    ap.add_argument("--probe", action="store_true",
+                    help="只做握手探测（连通性 + 压缩协商检查），不订阅、不采集、立即关闭；"
+                         "配合 --deflate / --deflate-ladder 可快速确认服务端是否接受压缩")
+    ap.add_argument("--strict", action="store_true",
+                    help="任一**测量**场次出现 error / collection_complete=False / inflate_failures>0 / "
+                         "rsv1_without_deflate>0 时以退出码 1 结束（适合脚本/监控自动化）")
+    ap.add_argument("--version", action="store_true", help="打印版本并退出")
     a = ap.parse_args()
+
+    if a.version:
+        print(SCRIPT_VERSION)
+        return 0
 
     if a.selftest:
         return _selftest()
 
-    if a.duration is None and a.seconds is None:
-        duration = 60
+    duration: int = 60
+    if a.probe:
+        # 探测场次不采集：时长参数无意义，跳过 60s 默认与校验（保留用户显式值以便记录）
+        duration = (a.duration if a.duration is not None
+                    else (a.seconds if a.seconds is not None else 0))
     elif a.duration is not None and a.seconds is not None and a.duration != a.seconds:
         raise SystemExit("--duration 与 --seconds 同时给出且不一致，请只用一个")
-    else:
-        duration = a.duration if a.duration is not None else a.seconds
-    if duration <= 0:
+    elif a.duration is not None:
+        duration = a.duration
+    elif a.seconds is not None:
+        duration = a.seconds
+    if not a.probe and duration <= 0:
         raise SystemExit("--duration/--seconds 必须为正整数")
-    if duration > 300:
+    if not a.probe and duration > 300:
         print(f"⚠️  {duration}s 长场次：请确认是 #27008 规模重测（单连接、公开端点、无压测），"
               "并固定出口。", flush=True)
 
@@ -1205,19 +1232,27 @@ def main():
 
     results = []
     for i, v in enumerate(venues):
-        if i:
+        if i and not a.probe:
             time.sleep(a.sleep)
         symbols, smeta = resolve_symbols(v, a)
-        if a.pair and len(symbols) == 1:
+        if a.pair and len(symbols) == 1 and not a.probe:
             symbols = [a.pair]
             smeta = {"source": "--pair 覆盖"}
-        print(f"[{time.strftime('%H:%M:%S')}] 采集 {v} … {duration}s，交易对 {len(symbols)} 个"
-              f"（{smeta.get('source')}）", flush=True)
+        print(f"[{time.strftime('%H:%M:%S')}] {'探测' if a.probe else '采集'} {v} … "
+              f"{duration}s，交易对 {len(symbols)} 个（{smeta.get('source')}）", flush=True)
         r = run_session(v, duration, host=(a.host if v == "lbank" else None),
                         path=(a.path if v == "lbank" else None),
                         offer_headers=offers, symbols=symbols, symbol_meta=smeta,
-                        proxy=a.proxy, subscribe_interval=a.subscribe_interval)
+                        proxy=a.proxy, subscribe_interval=a.subscribe_interval,
+                        probe_only=a.probe)
         results.append(r)
+        if a.probe:
+            flag = "ERR " + str(r["error"]) if r["error"] else "ok"
+            print(f"   {flag}  http={r.get('http_status')}  accept_valid={r.get('sec_websocket_accept_valid')}  "
+                  f"deflate: offer={r.get('deflate_offer_header')} "
+                  f"status={r.get('deflate_status')} accepted={r.get('deflate_accepted')}  "
+                  f"src={r.get('deflate_measurement_offer_source')}", flush=True)
+            continue
         flag = "ERR " + str(r["error"]) if r["error"] else "ok"
         print(f"   {flag}  symbols={r.get('symbols_count')} seen={r.get('symbols_seen')}  "
               f"msg={r.get('business_messages')}  wire/s={r.get('wire_bytes_per_s')}  "
@@ -1225,7 +1260,8 @@ def main():
               f"deflate: offered={r.get('deflate_offered')} accepted={r.get('deflate_accepted')} "
               f"status={r.get('deflate_status')} src={r.get('deflate_measurement_offer_source')}  "
               f"app_ping_frames={r.get('app_ping_frames')}  hb_sent={r.get('heartbeat_pings_sent')}  "
-              f"inflate_fail={r.get('inflate_failures')}", flush=True)
+              f"inflate_fail={r.get('inflate_failures')}  rsv1_no_deflate={r.get('rsv1_without_deflate')}",
+              flush=True)
 
     with open(a.out, "w", encoding="utf-8") as f:
         json.dump({
@@ -1238,6 +1274,19 @@ def main():
             "results": results,
         }, f, ensure_ascii=False, indent=2)
     print(f"\n写入 {a.out}")
+
+    if a.strict:
+        bad = [r for r in results
+               if r.get("error") or not r.get("collection_complete")
+               or (r.get("inflate_failures") or 0) > 0
+               or (r.get("rsv1_without_deflate") or 0) > 0]
+        if bad:
+            print(f"strict: {len(bad)}/{len(results)} 场次异常"
+                  f"（error / collection_complete=False / inflate_failures / rsv1_without_deflate）"
+                  " → 退出码 1", file=sys.stderr)
+            return 1
+        print("strict: 全部场次正常 → 退出码 0", flush=True)
+
     print("\n判读要点：")
     print("  * 比 wire_bytes_per_s 与 msg_per_s —— 若 LBank 显著更高且 size 分布相近，则为『服务端发送频率/粒度』问题")
     print("  * 看 deflate_status：accepted=服务端接受压缩（CCXT 侧可修）；server_refused=服务端拒绝（服务端行为）；")
@@ -1246,6 +1295,7 @@ def main():
     print("  * symbols_seen < symbols_count —— 部分交易对在该窗口内无成交（不是订阅失败；看 subscribe_errors）")
     print("  * app_ping_frames / subscribe_acks / heartbeat_* 已从业务指标剔除；异常场次看 collection_complete 与 error")
     print("  * inflate_failures > 0 —— 解压失败（分片/参数不匹配），该场次的 payload 尺寸按密文计，须先查因再比较")
+    print("  * rsv1_without_deflate > 0 —— 未协商压缩但服务端置 RSV1（协议违规），该帧负载未解压、按密文计尺寸")
     print("  * 单点拒绝（未回扩展）建议多出口复测后再定性")
 
 

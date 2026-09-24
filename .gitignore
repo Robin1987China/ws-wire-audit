@@ -3,6 +3,17 @@ __pycache__/
 *.py[cod]
 *.pyo
 
+# Packaging / build artifacts
+dist/
+build/
+*.egg-info/
+*.whl
+
+# Test / lint artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
 # Measurement outputs (local runs should not be committed by default)
 measure_ws_result.json
 *_result.json
