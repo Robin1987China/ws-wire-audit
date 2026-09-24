@@ -16,6 +16,12 @@ repository, you agree that:
 You retain copyright in your contribution. No CLA is required; a one-line
 confirmation in the pull request ("I confirm the above") is sufficient.
 
+## Reporting security issues
+
+Please report suspected security issues privately through GitHub's
+"Report a vulnerability" flow for this repository (Security tab) rather than in
+a public issue. This project has no separate security email address.
+
 ## How to submit a pull request
 
 1. Fork the repository and work on a branch.
