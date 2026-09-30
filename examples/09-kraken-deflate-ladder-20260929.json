@@ -1,0 +1,221 @@
+{
+  "generated_at": "2026-09-29T17:11:16+0800",
+  "script_version": "v1.4",
+  "seconds_per_venue": 60,
+  "deflate_offer_headers": [
+    "permessage-deflate",
+    "permessage-deflate; client_max_window_bits",
+    "permessage-deflate; client_max_window_bits=15; server_max_window_bits=15"
+  ],
+  "method": "single connection per venue, sequential, no reconnect, no keys, public channels only",
+  "results": [
+    {
+      "venue": "kraken",
+      "script_version": "v1.4",
+      "ws_url": "wss://ws.kraken.com:443/v2",
+      "requested_seconds": 60,
+      "proxy": "http-connect (address redacted)",
+      "symbols_requested": [
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT"
+      ],
+      "symbols_count": 3,
+      "symbol_meta": {
+        "source": "inline",
+        "quote": "USDT",
+        "assets_count": 3
+      },
+      "deflate_offered": true,
+      "deflate_accepted": false,
+      "deflate_status": "server_refused",
+      "deflate_offer_header": "permessage-deflate",
+      "deflate_response_header": null,
+      "negotiated_permessage_deflate": null,
+      "deflate_probe": [
+        {
+          "http_status": "HTTP/1.1 101 Switching Protocols",
+          "handshake_headers": [
+            "date: Tue, 29 Sep 2026 09:10:10 GMT",
+            "connection: upgrade",
+            "upgrade: websocket",
+            "sec-websocket-accept: SpG9B06K04SlMVRfpNekRVNN7RM=",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=4XHhNmKTRXmubyicGQw0LaDreJIDj5SZxk6W460AVug-1790673009.4239345-1.0.1.1-.HXLU6NdxBZCMa9f_k9qsFi7lawqIX3L2xw6r3ziblv1RPoDOA321zNrmnvefiYZ5s._4sLuMTolLY9xVHKKzOItadt9HiGL4eyElx58GtdcMPbNai1fI1VfurF9wjU4; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:10 GMT, _cfuvid=bolms2vYWTdvNpasqVKVRZvGhUr1yibNOs.0jiO5VsY-1790673009.4239345-1.0.1.1-1GsDU_ACGGo5qnzOtTKk6RWd9vUGlgVIihSqWo1Lb0k; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=4XHhNmKTRXmubyicGQw0LaDreJIDj5SZxk6W460AVug-1790673009.4239345-1.0.1.1-.HXLU6NdxBZCMa9f_k9qsFi7lawqIX3L2xw6r3ziblv1RPoDOA321zNrmnvefiYZ5s._4sLuMTolLY9xVHKKzOItadt9HiGL4eyElx58GtdcMPbNai1fI1VfurF9wjU4; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:10 GMT, _cfuvid=bolms2vYWTdvNpasqVKVRZvGhUr1yibNOs.0jiO5VsY-1790673009.4239345-1.0.1.1-1GsDU_ACGGo5qnzOtTKk6RWd9vUGlgVIihSqWo1Lb0k; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=4XHhNmKTRXmubyicGQw0LaDreJIDj5SZxk6W460AVug-1790673009.4239345-1.0.1.1-.HXLU6NdxBZCMa9f_k9qsFi7lawqIX3L2xw6r3ziblv1RPoDOA321zNrmnvefiYZ5s._4sLuMTolLY9xVHKKzOItadt9HiGL4eyElx58GtdcMPbNai1fI1VfurF9wjU4; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:10 GMT, _cfuvid=bolms2vYWTdvNpasqVKVRZvGhUr1yibNOs.0jiO5VsY-1790673009.4239345-1.0.1.1-1GsDU_ACGGo5qnzOtTKk6RWd9vUGlgVIihSqWo1Lb0k; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "cf-ray: a429da64eba0dd5b-HKG",
+            "cf-cache-status: BYPASS",
+            "cache-control: private, no-store",
+            "server: cloudflare",
+            "vary: accept-encoding",
+            "strict-transport-security: max-age=31536000; includeSubDomains; preload",
+            "x-content-type-options: nosniff"
+          ],
+          "sec_websocket_accept": "SpG9B06K04SlMVRfpNekRVNN7RM=",
+          "sec_websocket_accept_valid": true,
+          "deflate_offered": true,
+          "deflate_offer_header": "permessage-deflate",
+          "deflate_response_header": null,
+          "deflate_response_raw_values": [],
+          "deflate_extensions_parsed": [],
+          "deflate_accepted": false,
+          "deflate_params": null,
+          "deflate_status": "server_refused",
+          "negotiated_permessage_deflate": null
+        },
+        {
+          "http_status": "HTTP/1.1 101 Switching Protocols",
+          "handshake_headers": [
+            "date: Tue, 29 Sep 2026 09:10:12 GMT",
+            "connection: upgrade",
+            "upgrade: websocket",
+            "sec-websocket-accept: /LmtxMZpKqha7HmYF9ew9n8aC2M=",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=a3z4IgJDo_Wt9G0filDJeenAu1cdTGCjt3jKUAG20qQ-1790673011.3641489-1.0.1.1-x1eINbEoqG1Q2as3ltfEfBMO6ALOTPue67MIg67v6dGMx_2Awe6AR05ut9TcQd5W5mCXxasFC9u.lzCBsYDyYUFC549SPsZPWIgwffQaXieGMelHPHAjWWdnQWLmZ1K2; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:12 GMT, _cfuvid=u6Nbut0I7eoNWhg8kH_wORlYXsw0Ok5_jZE.i.gY1UI-1790673011.3641489-1.0.1.1-3GuK28uYnfqaOVrA1lGJYxF7jnqEl02b2V6lbN6kGG4; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=a3z4IgJDo_Wt9G0filDJeenAu1cdTGCjt3jKUAG20qQ-1790673011.3641489-1.0.1.1-x1eINbEoqG1Q2as3ltfEfBMO6ALOTPue67MIg67v6dGMx_2Awe6AR05ut9TcQd5W5mCXxasFC9u.lzCBsYDyYUFC549SPsZPWIgwffQaXieGMelHPHAjWWdnQWLmZ1K2; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:12 GMT, _cfuvid=u6Nbut0I7eoNWhg8kH_wORlYXsw0Ok5_jZE.i.gY1UI-1790673011.3641489-1.0.1.1-3GuK28uYnfqaOVrA1lGJYxF7jnqEl02b2V6lbN6kGG4; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=a3z4IgJDo_Wt9G0filDJeenAu1cdTGCjt3jKUAG20qQ-1790673011.3641489-1.0.1.1-x1eINbEoqG1Q2as3ltfEfBMO6ALOTPue67MIg67v6dGMx_2Awe6AR05ut9TcQd5W5mCXxasFC9u.lzCBsYDyYUFC549SPsZPWIgwffQaXieGMelHPHAjWWdnQWLmZ1K2; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:12 GMT, _cfuvid=u6Nbut0I7eoNWhg8kH_wORlYXsw0Ok5_jZE.i.gY1UI-1790673011.3641489-1.0.1.1-3GuK28uYnfqaOVrA1lGJYxF7jnqEl02b2V6lbN6kGG4; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "cf-ray: a429da710d5974bd-HKG",
+            "cf-cache-status: BYPASS",
+            "cache-control: private, no-store",
+            "server: cloudflare",
+            "vary: accept-encoding",
+            "strict-transport-security: max-age=31536000; includeSubDomains; preload",
+            "x-content-type-options: nosniff"
+          ],
+          "sec_websocket_accept": "/LmtxMZpKqha7HmYF9ew9n8aC2M=",
+          "sec_websocket_accept_valid": true,
+          "deflate_offered": true,
+          "deflate_offer_header": "permessage-deflate; client_max_window_bits",
+          "deflate_response_header": null,
+          "deflate_response_raw_values": [],
+          "deflate_extensions_parsed": [],
+          "deflate_accepted": false,
+          "deflate_params": null,
+          "deflate_status": "server_refused",
+          "negotiated_permessage_deflate": null
+        },
+        {
+          "http_status": "HTTP/1.1 101 Switching Protocols",
+          "handshake_headers": [
+            "date: Tue, 29 Sep 2026 09:10:14 GMT",
+            "connection: upgrade",
+            "upgrade: websocket",
+            "sec-websocket-accept: lYLuhh0keacFPip0Lg3/oZJ+DJ4=",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=.bZvB7kAYp8p_O2fJvoCVh1BwJJMnROpohGeY0QO7b0-1790673013.4547043-1.0.1.1-NUYdyk3pH8bmQ88Dx_CsYPDjr7fiHJQES4RSL9CkZyArAwRTtdtufj8H5J8NWodhxqDapYZzst.0gDYd79twIEVgct89walANiAMNeMNts3v2DQS6QCFcoJw74YqYGAg; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:14 GMT, _cfuvid=Zs9nAmC7.uhWfGeoRtHci5w5NgGoVH9hss.mikOnRQk-1790673013.4547043-1.0.1.1-w8aa41u2y5Ztzbmfpys72UCKxwJMr7hGLSz.gREP7gM; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=.bZvB7kAYp8p_O2fJvoCVh1BwJJMnROpohGeY0QO7b0-1790673013.4547043-1.0.1.1-NUYdyk3pH8bmQ88Dx_CsYPDjr7fiHJQES4RSL9CkZyArAwRTtdtufj8H5J8NWodhxqDapYZzst.0gDYd79twIEVgct89walANiAMNeMNts3v2DQS6QCFcoJw74YqYGAg; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:14 GMT, _cfuvid=Zs9nAmC7.uhWfGeoRtHci5w5NgGoVH9hss.mikOnRQk-1790673013.4547043-1.0.1.1-w8aa41u2y5Ztzbmfpys72UCKxwJMr7hGLSz.gREP7gM; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=.bZvB7kAYp8p_O2fJvoCVh1BwJJMnROpohGeY0QO7b0-1790673013.4547043-1.0.1.1-NUYdyk3pH8bmQ88Dx_CsYPDjr7fiHJQES4RSL9CkZyArAwRTtdtufj8H5J8NWodhxqDapYZzst.0gDYd79twIEVgct89walANiAMNeMNts3v2DQS6QCFcoJw74YqYGAg; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:14 GMT, _cfuvid=Zs9nAmC7.uhWfGeoRtHci5w5NgGoVH9hss.mikOnRQk-1790673013.4547043-1.0.1.1-w8aa41u2y5Ztzbmfpys72UCKxwJMr7hGLSz.gREP7gM; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+            "cf-ray: a429da7e1cab8564-HKG",
+            "cf-cache-status: BYPASS",
+            "cache-control: private, no-store",
+            "server: cloudflare",
+            "vary: accept-encoding",
+            "strict-transport-security: max-age=31536000; includeSubDomains; preload",
+            "x-content-type-options: nosniff"
+          ],
+          "sec_websocket_accept": "lYLuhh0keacFPip0Lg3/oZJ+DJ4=",
+          "sec_websocket_accept_valid": true,
+          "deflate_offered": true,
+          "deflate_offer_header": "permessage-deflate; client_max_window_bits=15; server_max_window_bits=15",
+          "deflate_response_header": null,
+          "deflate_response_raw_values": [],
+          "deflate_extensions_parsed": [],
+          "deflate_accepted": false,
+          "deflate_params": null,
+          "deflate_status": "server_refused",
+          "negotiated_permessage_deflate": null
+        }
+      ],
+      "deflate_measurement_offer_source": "ladder-fallback-first-offer",
+      "deflate_probe_statuses": [
+        {
+          "offer": "permessage-deflate",
+          "status": "server_refused"
+        },
+        {
+          "offer": "permessage-deflate; client_max_window_bits",
+          "status": "server_refused"
+        },
+        {
+          "offer": "permessage-deflate; client_max_window_bits=15; server_max_window_bits=15",
+          "status": "server_refused"
+        }
+      ],
+      "deflate_probe_all_refused": true,
+      "http_status": "HTTP/1.1 101 Switching Protocols",
+      "sec_websocket_accept": "jQmwAQOcswNvj0XuCLj3hb4tbX4=",
+      "sec_websocket_accept_valid": true,
+      "reconnects": 0,
+      "collection_complete": true,
+      "error": null,
+      "handshake_headers": [
+        "date: Tue, 29 Sep 2026 09:10:16 GMT",
+        "connection: upgrade",
+        "upgrade: websocket",
+        "sec-websocket-accept: jQmwAQOcswNvj0XuCLj3hb4tbX4=",
+        "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=x6ykmzQk8oUYbI4csHz4AzmNhu6upuclj5S7d_U0ZgU-1790673014.9672496-1.0.1.1-G1mHIYVAZkXnh79lYhOUKnCf6fSYZOZvdlJ_Ffk2uAUnlkkDUlslMV88vtLDgbPzj.Oe0A8j2bx3RK4NfS3R1qflfCxqkckru6JbHs2bYQiWJuGF3fiMGLdGGT6IEQQo; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:16 GMT, _cfuvid=igYthWii_D5ETjtPKrMVoE4gbCF8.OMMYLPeT12XBRs-1790673014.9672496-1.0.1.1-NdgGKLsIXlKnPdfhECCP5sIcj7jpBam3X68YnlSZssA; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+        "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=x6ykmzQk8oUYbI4csHz4AzmNhu6upuclj5S7d_U0ZgU-1790673014.9672496-1.0.1.1-G1mHIYVAZkXnh79lYhOUKnCf6fSYZOZvdlJ_Ffk2uAUnlkkDUlslMV88vtLDgbPzj.Oe0A8j2bx3RK4NfS3R1qflfCxqkckru6JbHs2bYQiWJuGF3fiMGLdGGT6IEQQo; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:16 GMT, _cfuvid=igYthWii_D5ETjtPKrMVoE4gbCF8.OMMYLPeT12XBRs-1790673014.9672496-1.0.1.1-NdgGKLsIXlKnPdfhECCP5sIcj7jpBam3X68YnlSZssA; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+        "set-cookie: facade-lang=en-us; Path=/; Domain=kraken.com; Max-Age=2592000; SameSite=Lax; Secure, __cf_bm=x6ykmzQk8oUYbI4csHz4AzmNhu6upuclj5S7d_U0ZgU-1790673014.9672496-1.0.1.1-G1mHIYVAZkXnh79lYhOUKnCf6fSYZOZvdlJ_Ffk2uAUnlkkDUlslMV88vtLDgbPzj.Oe0A8j2bx3RK4NfS3R1qflfCxqkckru6JbHs2bYQiWJuGF3fiMGLdGGT6IEQQo; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com; Expires=Tue, 29 Sep 2026 09:40:16 GMT, _cfuvid=igYthWii_D5ETjtPKrMVoE4gbCF8.OMMYLPeT12XBRs-1790673014.9672496-1.0.1.1-NdgGKLsIXlKnPdfhECCP5sIcj7jpBam3X68YnlSZssA; HttpOnly; SameSite=None; Secure; Path=/; Domain=kraken.com",
+        "cf-ray: a429da878e6d064f-HKG",
+        "cf-cache-status: BYPASS",
+        "cache-control: private, no-store",
+        "server: cloudflare",
+        "vary: accept-encoding",
+        "strict-transport-security: max-age=31536000; includeSubDomains; preload",
+        "x-content-type-options: nosniff"
+      ],
+      "deflate_response_raw_values": [],
+      "deflate_extensions_parsed": [],
+      "deflate_params": null,
+      "proxy_connect_status": "HTTP/1.1 200 Connection established",
+      "subscribe_mode": "subscribe",
+      "subscribe_plan": {
+        "batch_size": 50,
+        "messages_planned": 1,
+        "batch_capability": "批量（单报文多对）",
+        "notes": "单条 subscribe 报文可带 symbol 数组（多 pair）；文档另注『每个 symbol 一条回执』。本实现按 50/报文 分块（保守值，未联网复核上限）。"
+      },
+      "elapsed_s": 60.606,
+      "business_messages": 2,
+      "control_frames": 0,
+      "app_ping_frames": 0,
+      "venue_heartbeat_frames": 63,
+      "venue_heartbeat_wire_bytes": 1725,
+      "app_ping_payload_bytes": 0,
+      "app_ping_wire_bytes": 0,
+      "subscribe_acks": 3,
+      "subscribe_ack_wire_bytes": 564,
+      "subscribe_messages_sent": 1,
+      "subscribe_errors": [],
+      "app_pings_sent": 0,
+      "app_pongs_sent": 0,
+      "heartbeat_pings_sent": 2,
+      "heartbeat_pongs_received": 2,
+      "payload_bytes": 954,
+      "wire_bytes": 962,
+      "wire_bytes_total": 3251,
+      "control_wire_bytes": 0,
+      "compressed_frames": 0,
+      "inflate_failures": 0,
+      "msg_per_s": 0.033,
+      "payload_bytes_per_s": 15.7,
+      "wire_bytes_per_s": 15.9,
+      "wire_bytes_total_per_s": 53.6,
+      "msg_types": {
+        "update": 2
+      },
+      "symbol_msg_counts": {
+        "BTC/USDT": 1
+      },
+      "symbols_seen": 1,
+      "size_bytes": {
+        "min": 342,
+        "p50": 612,
+        "p90": 612,
+        "p99": 612,
+        "max": 612,
+        "mean": 477.0
+      },
+      "first_msg_latency_ms": 0.4,
+      "wall_clock_s": 68.915
+    }
+  ]
+}

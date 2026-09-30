@@ -1,0 +1,161 @@
+{
+  "generated_at": "2026-09-29T17:10:07+0800",
+  "script_version": "v1.4",
+  "seconds_per_venue": 60,
+  "deflate_offer_headers": [
+    "permessage-deflate",
+    "permessage-deflate; client_max_window_bits",
+    "permessage-deflate; client_max_window_bits=15; server_max_window_bits=15"
+  ],
+  "method": "single connection per venue, sequential, no reconnect, no keys, public channels only",
+  "results": [
+    {
+      "venue": "okx",
+      "script_version": "v1.4",
+      "ws_url": "wss://ws.okx.com:8443/ws/v5/business",
+      "requested_seconds": 60,
+      "proxy": "http-connect (address redacted)",
+      "symbols_requested": [
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT"
+      ],
+      "symbols_count": 3,
+      "symbol_meta": {
+        "source": "inline",
+        "quote": "USDT",
+        "assets_count": 3
+      },
+      "deflate_offered": true,
+      "deflate_accepted": true,
+      "deflate_status": "accepted",
+      "deflate_offer_header": "permessage-deflate",
+      "deflate_response_header": "permessage-deflate",
+      "negotiated_permessage_deflate": "permessage-deflate",
+      "deflate_probe": [
+        {
+          "http_status": "HTTP/1.1 101 Switching Protocols",
+          "handshake_headers": [
+            "date: Tue, 29 Sep 2026 09:09:07 GMT",
+            "connection: upgrade",
+            "upgrade: websocket",
+            "sec-websocket-accept: o4T+QZFpa7re0rKUyv6sjnW6lCM=",
+            "ok-push-connection-id: 241bb679",
+            "sec-websocket-extensions: permessage-deflate",
+            "cf-cache-status: DYNAMIC",
+            "set-cookie: __cf_bm=RzJ_ZyYejNbLDMZf1UqdwPVOVzok.UoPq6IUVRJbV_E-1790672946.8566017-1.0.1.1-cZ0vTyvzvEEG6byPUwNlnpTW2Hagm_Hw6mj_a96cXFgyaj.AP93wsloCreXqWRpPQm6zsooUruQsx2XlOKHbH_RiltqplRGhX_up1E.PPyfJ2JUNrvN6T3Bbk_iB5UdK; HttpOnly; SameSite=None; Secure; Path=/; Domain=okx.com; Expires=Tue, 29 Sep 2026 09:39:07 GMT",
+            "server: cloudflare",
+            "cf-ray: a429d8ddde641291-HKG"
+          ],
+          "sec_websocket_accept": "o4T+QZFpa7re0rKUyv6sjnW6lCM=",
+          "sec_websocket_accept_valid": true,
+          "deflate_offered": true,
+          "deflate_offer_header": "permessage-deflate",
+          "deflate_response_header": "permessage-deflate",
+          "deflate_response_raw_values": [
+            "permessage-deflate"
+          ],
+          "deflate_extensions_parsed": [
+            [
+              "permessage-deflate",
+              {}
+            ]
+          ],
+          "deflate_accepted": true,
+          "deflate_params": {},
+          "deflate_status": "accepted",
+          "negotiated_permessage_deflate": "permessage-deflate"
+        }
+      ],
+      "deflate_measurement_offer_source": "ladder-accepted",
+      "deflate_probe_statuses": [
+        {
+          "offer": "permessage-deflate",
+          "status": "accepted"
+        }
+      ],
+      "deflate_probe_all_refused": false,
+      "http_status": "HTTP/1.1 101 Switching Protocols",
+      "sec_websocket_accept": "mKvifIADRmrqydp70hOSfbej2uk=",
+      "sec_websocket_accept_valid": true,
+      "reconnects": 0,
+      "collection_complete": true,
+      "error": null,
+      "handshake_headers": [
+        "date: Tue, 29 Sep 2026 09:09:07 GMT",
+        "connection: upgrade",
+        "upgrade: websocket",
+        "sec-websocket-accept: mKvifIADRmrqydp70hOSfbej2uk=",
+        "ok-push-connection-id: 894bb535",
+        "sec-websocket-extensions: permessage-deflate",
+        "cf-cache-status: DYNAMIC",
+        "set-cookie: __cf_bm=wh0fdjP8p4k59MAcVzK3DtJ7Hg6ygQspH83s4Q_PakI-1790672947.2440317-1.0.1.1-s4OGm25Sn7RxlE5v8Lrz_MDc1EETpAvdToZM5ejrWqjivMiFCOS56WsM8KyzFumFeokeBQwvi0X32XSAWQZIRrOOq7vAr0EjPwb8_JDIAxVOCfqv5z6yuU.ZRtR0jqqP; HttpOnly; SameSite=None; Secure; Path=/; Domain=okx.com; Expires=Tue, 29 Sep 2026 09:39:07 GMT",
+        "server: cloudflare",
+        "cf-ray: a429d8e04dc488cc-HKG"
+      ],
+      "deflate_response_raw_values": [
+        "permessage-deflate"
+      ],
+      "deflate_extensions_parsed": [
+        [
+          "permessage-deflate",
+          {}
+        ]
+      ],
+      "deflate_params": {},
+      "proxy_connect_status": "HTTP/1.1 200 Connection established",
+      "subscribe_mode": "subscribe",
+      "subscribe_plan": {
+        "batch_size": 20,
+        "messages_planned": 1,
+        "batch_capability": "批量（单报文多对）",
+        "notes": "单条 {\"op\":\"subscribe\",\"args\":[{\"channel\":\"trades-all\",\"instId\":...}, ...]}；本实现按 20 args/报文 分块（保守值，未联网复核上限）。"
+      },
+      "elapsed_s": 60.462,
+      "business_messages": 387,
+      "control_frames": 0,
+      "app_ping_frames": 0,
+      "venue_heartbeat_frames": 2,
+      "venue_heartbeat_wire_bytes": 14,
+      "app_ping_payload_bytes": 0,
+      "app_ping_wire_bytes": 0,
+      "subscribe_acks": 3,
+      "subscribe_ack_wire_bytes": 113,
+      "subscribe_messages_sent": 1,
+      "subscribe_errors": [],
+      "app_pings_sent": 0,
+      "app_pongs_sent": 0,
+      "heartbeat_pings_sent": 2,
+      "heartbeat_pongs_received": 2,
+      "payload_bytes": 70977,
+      "wire_bytes": 72525,
+      "wire_bytes_total": 72652,
+      "control_wire_bytes": 0,
+      "compressed_frames": 5,
+      "inflate_failures": 0,
+      "msg_per_s": 6.401,
+      "payload_bytes_per_s": 1173.9,
+      "wire_bytes_per_s": 1199.5,
+      "wire_bytes_total_per_s": 1201.6,
+      "msg_types": {
+        "trades-all": 387
+      },
+      "symbol_msg_counts": {
+        "BTC-USDT": 151,
+        "ETH-USDT": 129,
+        "SOL-USDT": 107
+      },
+      "symbols_seen": 3,
+      "size_bytes": {
+        "min": 176,
+        "p50": 183,
+        "p90": 187,
+        "p99": 187,
+        "max": 187,
+        "mean": 183.4
+      },
+      "first_msg_latency_ms": 1200.8,
+      "wall_clock_s": 61.327
+    }
+  ]
+}
