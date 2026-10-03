@@ -1,9 +1,8 @@
 # ws-wire-audit
 
-> **Attribution (settled 2026-09-23).** Copyright holder and public author identity:
+&gt; **Author and licence.** Copyright holder and public author identity:
 > `Robin1987China` — the same identity used for the upstream contributions in this
-> project's record. Do not publish this repository until the remaining items in the
-> release checklist are complete.
+> project's record. Contributions and releases use the same identity.
 
 A standard-library-only measurement tool for **wire-level traffic and
 compression negotiation on public market-data WebSocket feeds**.
