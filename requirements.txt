@@ -1,7 +1,7 @@
 # ws-wire-audit — dependencies
 #
 # None. This project uses only the Python 3 standard library:
-#   socket, ssl, zlib, struct, hashlib, base64, json, argparse, os, time, uuid
+#   socket, ssl, zlib, struct, hashlib, base64, json, html, argparse, os, time, uuid
 #
 # Requires Python 3.8+ (tested on 3.11+/3.13; statistics.fmean needs 3.8).
 # No pip install step is needed:

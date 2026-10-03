@@ -62,7 +62,7 @@ a measurement instrument, not a benchmark, and not a load generator.
 ## 3. How to use
 
 Requires **Python 3.8+** — standard library (`socket`, `ssl`, `zlib`,
-`struct`, `hashlib`, `base64`, `json`). No `ccxt`, no `websockets`, no
+`struct`, `hashlib`, `base64`, `json`, `html`). No `ccxt`, no `websockets`, no
 `aiohttp`. See `requirements.txt`.
 
 ### Offline self-test (no network, no endpoints contacted)
@@ -134,6 +134,25 @@ as many subscription frames as the venue's publicly documented batching allows
 (LBank = 1 pair per frame, Binance = up to 1024 streams per frame, Bybit = up to
 10 args per frame; see `subscribe_batch_size` in the script and re-verify it
 against current docs before running).
+
+### Report output (Markdown / self-contained HTML)
+
+```console
+$ python3 measure_ws.py --venue lbank --duration 600 --report md    # measure, then write a report
+$ python3 measure_ws.py --venue lbank --duration 600 --report html --report-out lbank.html
+$ python3 measure_ws.py --from-json measure_ws_result.json --report md   # report an existing session, no network
+```
+
+`--report md|html|none` (default `none`) writes a human-readable report after a
+measurement; `--report-out` sets the path. `--from-json <session.json>` renders a
+report from an **existing** session file without touching the network — useful
+for re-reporting historical sessions. The header carries the venue, symbol
+count, window, observation time, tool version and a one-line reproduce command;
+every metric table carries a `Source field` column so each figure is traceable
+to a field of the source JSON (missing fields read `n/a`, never estimated). The
+report also restates the SPEC.md four declarations and the README §5
+limitations. It stays stdlib-only: the HTML is self-contained (inline CSS, no
+CDN / fonts / scripts). See `examples/report-lbank-vs-binance.md`.
 
 ### Proxy
 
@@ -261,7 +280,7 @@ ws-wire-audit/
 │   ├── 02-permessage-deflate-negotiation.md
 │   └── 03-lbank-deflate-ladder-probe.json
 ├── pyproject.toml        # packaging (zero runtime deps) + pytest/ruff config
-├── tests/                # offline pytest suite (79 cases, zero network)
+├── tests/                # offline pytest suite (95 cases, zero network)
 │   └── test_measure_ws.py
 ├── contract-audit.md     # companion report: LBank public API contract issues
 └── SPEC.md               # proposed four-declaration rule for cross-venue comparison
@@ -287,7 +306,7 @@ program behaviour. Verified after sanitisation:
 $ # (internal-term scan: run privately; the term list is not reproduced here)
 # zero matches
 $ python3 measure_ws.py --selftest     # 自测结果：全部通过 (35 assertions)
-$ python3 -m pytest tests/ -q          # v1.4 offline suite: 79 passed
+$ python3 -m pytest tests/ -q          # v1.4 offline suite: 95 passed
 $ shasum -a 256 measure_ws.py
 b50f66b1c9b2496a90ca9134a0f3bff81c0a157332ac3ba3f4c7ab4c6bdede48  measure_ws.py
 ```
@@ -300,7 +319,7 @@ accounting rules are visible in one file"). What v1.4 adds around it:
 - `pyproject.toml`: zero runtime dependencies, `ws-wire-audit` console script
   (`python3 -m pip install .` then `ws-wire-audit --version`), pytest and
   ruff (`F`, `E9` — bug-catching only) configuration.
-- `tests/test_measure_ws.py`: **79 offline pytest cases** (zero network)
+- `tests/test_measure_ws.py`: **95 offline pytest cases** (zero network)
   covering the handshake/extension parser, the frame reader (control frames,
   pong echo, deflate window bits, no-context-takeover, inflate failures,
   RSV1-without-negotiation), session accounting (heartbeat/ack segregation,

@@ -39,6 +39,13 @@ data, no raw per-symbol message dumps, no raw response bodies.
 > 96–235 stay below the venue heartbeat 622–623 in every session, so Kraken's
 > USDT face is **not** a suitable throughput sample). No tool change was made
 > (still v1.4).
+| `report-lbank-vs-binance.md` / `.html` | Human-readable report generated from `01-…json` by `measure_ws.py --report` (Markdown + self-contained HTML); every figure carries its source-JSON field | `01-…`, 2026-09-22 |
+| `report-lbank-deflate-ladder.md` / `.html` | Human-readable report generated from `03-…json` (probe shape) | `03-…`, 2026-09-22 |
+
+The two report pairs are **regenerable offline** from the JSONs next to them
+(`--from-json`, no network) and are kept as the rendering examples for the
+report mode. The `.html` files are self-contained: inline CSS, no external
+scripts, fonts or CDN — the only outbound link is the repository URL.
 
 ## What was removed before publishing
 
