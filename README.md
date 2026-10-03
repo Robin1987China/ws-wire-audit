@@ -1,6 +1,6 @@
 # ws-wire-audit
 
-&gt; **Author and licence.** Copyright holder and public author identity:
+> **Author and licence.** Copyright holder and public author identity:
 > `Robin1987China` — the same identity used for the upstream contributions in this
 > project's record. Contributions and releases use the same identity.
 
