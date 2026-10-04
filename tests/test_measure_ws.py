@@ -780,3 +780,194 @@ class TestMain:
 class TestBuiltinSelftest:
     def test_selftest_returns_zero(self):
         assert mw._selftest() == 0
+
+
+# ---------------------------------------------------------------- report output (P1-F1)
+def live_result(venue="lbank", **over):
+    """A synthetic live --out session entry (the shape measure_ws.py emits)."""
+    r = {
+        "venue": venue, "script_version": "v1.4",
+        "symbols_count": 3, "symbols_seen": 2,
+        "requested_seconds": 60, "elapsed_s": 60.0,
+        "msg_per_s": 12.345, "payload_bytes_per_s": 100.5, "wire_bytes_per_s": 120.7,
+        "business_messages": 741, "payload_bytes": 6030, "wire_bytes": 7242,
+        "wire_bytes_total": 7300,
+        "size_bytes": {"min": 5, "p50": 8, "p90": 9, "p99": 10, "max": 11, "mean": 8.1},
+        "deflate_status": "not_offered", "deflate_offered": False,
+        "deflate_accepted": False, "deflate_offer_header": None,
+        "deflate_response_header": None, "deflate_measurement_offer_source": "none",
+        "compressed_frames": 0, "inflate_failures": 0,
+        "subscribe_acks": 1, "control_frames": 2, "app_ping_frames": 0,
+        "heartbeat_pings_sent": 0, "heartbeat_pongs_received": 0,
+        "subscribe_messages_sent": 1, "reconnects": 0,
+        "collection_complete": True, "error": None,
+    }
+    r.update(over)
+    return r
+
+
+def report_doc(*sessions, meta=None):
+    m = {"generated_at": "2026-10-03T17:00:00+0800", "script_version": "v1.4",
+         "reproduce": ["python3 measure_ws.py --venue lbank --duration 60"]}
+    if meta:
+        m.update(meta)
+    return {"meta": m, "sessions": list(sessions), "source": "sess.json"}
+
+
+class TestReportOutput:
+    def test_md_header_metrics_and_traceability(self):
+        md = mw.render_report(report_doc(live_result()), "md")
+        assert "# Wire-audit report — lbank" in md
+        assert "- **Symbols:** 3 requested / 2 seen" in md
+        assert "- **Window:** 60 s per session, clock starts after subscribe" in md
+        assert "- **Tool:** measure_ws.py v1.4" in md
+        assert "12.345" in md and "`msg_per_s`" in md
+        assert "`size_bytes.p50`" in md
+        assert "Caliber declaration" in md
+        assert "Limitations and what was / was not measured" in md
+
+    def test_numbers_match_input_json(self):
+        r = live_result(business_messages=741, msg_per_s=12.345, wire_bytes=7242)
+        md = mw.render_report(report_doc(r), "md")
+        assert "| business messages (frames) | 741 |" in md
+        assert "| msg/s | 12.345 |" in md
+        assert "| wire bytes (as-read) | 7,242 |" in md
+
+    def test_multi_session_comparison_columns(self):
+        md = mw.render_report(report_doc(live_result("lbank"), live_result("binance")), "md")
+        assert "# Wire-audit report — lbank vs binance" in md
+        assert "| Metric | lbank | binance | Source field |" in md
+
+    def test_html_is_self_contained(self):
+        html = mw.render_report(report_doc(live_result()), "html")
+        assert html.startswith("<!DOCTYPE html>")
+        assert "<style>" in html and "</html>" in html
+        for bad in ("<script", "<link", "@import", "src=", "cdn.", "fonts.googleapis"):
+            assert bad not in html
+        assert html.count("https://") == 1
+        assert "https://github.com/Robin1987China/ws-wire-audit" in html
+
+    def test_html_escapes_values(self):
+        html = mw.render_report(report_doc(live_result(venue="<b>&x")), "html")
+        assert "<b>&x" not in html
+        assert "&lt;b&gt;" in html
+
+    def test_missing_fields_degrade_to_na(self):
+        r = live_result()
+        for k in ("size_bytes", "msg_per_s", "deflate_status", "subscribe_acks",
+                  "deflate_offer_header", "deflate_response_header",
+                  "deflate_measurement_offer_source"):
+            r.pop(k)
+        md = mw.render_report(report_doc(r), "md")
+        assert "| msg/s | n/a | — |" in md
+        assert "| p50 | n/a | — |" in md
+        assert "| subscribe acks | n/a | — |" in md
+        assert "not published" in md
+
+    def test_deflate_four_states_render(self):
+        for st in ("not_offered", "server_refused", "accepted", "unsolicited"):
+            md = mw.render_report(report_doc(live_result(deflate_status=st)), "md")
+            assert "| deflate_state | " + st + " | `deflate_status` |" in md
+
+    def test_compression_headers_rendered(self):
+        r = live_result(deflate_status="accepted", deflate_offered=True,
+                        deflate_accepted=True,
+                        deflate_offer_header="permessage-deflate; client_max_window_bits",
+                        deflate_response_header="permessage-deflate")
+        md = mw.render_report(report_doc(r), "md")
+        assert "`permessage-deflate; client_max_window_bits`" in md
+        assert "101-response extension header: `permessage-deflate`" in md
+
+    def test_sanitizer_and_guard(self):
+        assert mw._sanitize("/tmp/sess.json") == "<workdir>"
+        assert "/Users" not in mw._sanitize("--symbols-file /Users/me/s.json")
+        mw._assert_report_clean("clean report under <workdir>")
+        with pytest.raises(SystemExit):
+            mw._assert_report_clean("leak /Users/me/x")
+        with pytest.raises(SystemExit):
+            mw._assert_report_clean("proxy 127.0.0.1:7890")
+
+    def test_write_report_md_file(self, tmp_path):
+        out = tmp_path / "r.md"
+        mw.write_report(report_doc(live_result()), "md", str(out))
+        assert "Wire-audit report" in out.read_text(encoding="utf-8")
+
+    def test_load_session_doc_shapes(self, tmp_path):
+        results = tmp_path / "live.json"
+        results.write_text(json.dumps({"script_version": "v1.4",
+                                       "results": [live_result()]}), encoding="utf-8")
+        assert mw.load_session_doc(str(results))["sessions"][0]["venue"] == "lbank"
+        probe = tmp_path / "probe.json"
+        probe.write_text(json.dumps({
+            "produced_by": "measure_ws.py v1.3", "venue": "lbank",
+            "probe_results": [{"offer": "permessage-deflate", "status": "server_refused"}],
+            "measured_session": {"deflate_offered": True, "deflate_accepted": False,
+                                 "deflate_status": "server_refused",
+                                 "deflate_offer_source": "ladder-fallback-first-offer",
+                                 "wire_bytes": 100, "payload_bytes": 90}}), encoding="utf-8")
+        md = mw.render_report(mw.load_session_doc(str(probe)), "md")
+        assert "Compression offer ladder (probe)" in md
+        assert "`ladder-fallback-first-offer`" in md
+        assert "server_refused" in md
+
+    def test_load_session_doc_errors(self, tmp_path):
+        bad = tmp_path / "bad.json"
+        bad.write_text('{"foo": 1}', encoding="utf-8")
+        with pytest.raises(SystemExit, match="认不出"):
+            mw.load_session_doc(str(bad))
+        with pytest.raises(SystemExit, match="打不开"):
+            mw.load_session_doc(str(tmp_path / "nope.json"))
+
+    def test_from_json_cli_touches_no_network(self, monkeypatch, tmp_path):
+        src = tmp_path / "sess.json"
+        src.write_text(json.dumps({"generated_at": "2026-10-03T00:00:00+0800",
+                                   "script_version": "v1.4",
+                                   "results": [live_result()]}), encoding="utf-8")
+        out = tmp_path / "rep.md"
+
+        def boom(*a, **k):
+            raise AssertionError("--from-json must not call run_session")
+
+        monkeypatch.setattr(mw, "run_session", boom)
+        monkeypatch.setattr(sys, "argv", ["measure_ws.py", "--from-json", str(src),
+                                           "--report", "md", "--report-out", str(out)])
+        assert mw.main() == 0
+        assert "Wire-audit report" in out.read_text(encoding="utf-8")
+
+    def test_from_json_defaults_to_md(self, monkeypatch, tmp_path):
+        src = tmp_path / "sess.json"
+        src.write_text(json.dumps({"venue": "lbank", "msg_per_s": 1.0}), encoding="utf-8")
+        out = tmp_path / "r.md"
+        monkeypatch.setattr(sys, "argv", ["measure_ws.py", "--from-json", str(src),
+                                           "--report-out", str(out)])
+        assert mw.main() == 0
+        assert "Wire-audit report" in out.read_text(encoding="utf-8")
+
+    def test_live_run_writes_json_and_report(self, monkeypatch, tmp_path):
+        out = tmp_path / "r.json"
+        rep = tmp_path / "r.md"
+        monkeypatch.setattr(mw, "run_session", lambda *a, **k: dict(live_result()))
+        monkeypatch.setattr(sys, "argv",
+                            ["measure_ws.py", "--venue", "lbank", "--duration", "1",
+                             "--report", "md", "--report-out", str(rep), "--out", str(out)])
+        assert mw.main() in (None, 0)
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert data["results"][0]["venue"] == "lbank"
+        assert list(data.keys()) == ["generated_at", "script_version", "seconds_per_venue",
+                                     "deflate_offer_headers", "method", "results"]
+        md = rep.read_text(encoding="utf-8")
+        assert "Wire-audit report" in md
+        assert "python3 measure_ws.py --venue lbank --duration 1" in md
+
+    def test_live_reproduce_command_sanitizes_paths(self, tmp_path):
+        out = tmp_path / "r.json"
+        monkeypatch_argv = ["measure_ws.py", "--venue", "lbank", "--duration", "1",
+                            "--symbols-file", str(tmp_path / "sym.json"),
+                            "--report", "md", "--out", str(out)]
+        import argparse as _ap
+        a = _ap.Namespace(venue="lbank", symbols_file=str(tmp_path / "sym.json"),
+                          raw_symbols=None, symbols=None, deflate=False,
+                          deflate_offer=None, deflate_ladder=False, probe=False, out=str(out))
+        cmd = mw._live_reproduce_cmd(a, 1)
+        assert "<workdir>" in cmd and "/tmp" not in cmd and "/Users" not in cmd
+        assert monkeypatch_argv  # document the CLI shape this mirrors

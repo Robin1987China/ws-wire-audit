@@ -941,6 +941,596 @@ def run_session(venue: str, seconds: int, host=None, path=None, offer_headers=No
     return res
 
 
+# ---------------------------------------------------------------- 报告生成（stdlib-only）
+# 把一次（或一批）场次 JSON 渲染成**人可读、可分享**的 Markdown / 自包含 HTML。
+# 约束（与仓库既有口径一致，见 README §5 / SPEC.md）：
+#   * 零第三方依赖；HTML 自包含（内联 CSS，无 CDN / 字体 / 脚本外链）。
+#   * 每个数字可追溯到源 JSON 的字段路径（每张表附 Source field 列）。
+#   * 不美化：限制与未测沿用 SPEC.md / README.md 的既有措辞；缺失字段降级为 n/a。
+REPORT_FORMATS = ("md", "html", "none")
+REPORT_EGRESS = ("unknown (report redacts the local network path; "
+                 "SPEC §1.4: write unknown, do not omit)")
+
+from html import escape as _esc
+
+_ABS_PATH_RE = re.compile(r"(?:/Users|/home|/tmp|/private/var|/var/folders)[^\s\"'`]*")
+_IPPORT_RE = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}:\d{2,5}\b")
+
+
+def _sanitize(text):
+    """本地绝对路径 → <workdir> 占位（报告是分享物，不含本机路径）。"""
+    return _ABS_PATH_RE.sub("<workdir>", str(text))
+
+
+def _assert_report_clean(text):
+    """写出前脱敏自检：不得含本机路径 / 内部代号 / 代理地址端口；命中即拒绝写出。"""
+    hits = []
+    if "/Users" in text:
+        hits.append("/Users path")
+    if "/tmp" in text:
+        hits.append("/tmp path")
+    if "entryA" in text:
+        hits.append("internal codename")
+    hits += ["ip:port " + m for m in _IPPORT_RE.findall(text)]
+    if hits:
+        raise SystemExit("报告脱敏自检失败，拒绝写出：" + "; ".join(sorted(set(hits))))
+
+
+def _rget(obj, *paths):
+    """按点号路径返回第一个**键存在**的值（值本身可为 None）：(value, path) 或 (None, None)。"""
+    for p in paths:
+        cur, ok = obj, True
+        for part in p.split("."):
+            if isinstance(cur, dict) and part in cur:
+                cur = cur[part]
+            else:
+                ok = False
+                break
+        if ok:
+            return cur, p
+    return None, None
+
+
+def _norm_session(top, obj):
+    """把一处场次规整成统一字段集：{key: (value, source_field_path)}。
+
+    兼容三种输入：实时 run 的结果、curated 摘要（含 accounting./compression./integrity.
+    嵌套）、探针文件的 measured_session。缺失字段 → (None, None)，报告降级为 n/a。
+    """
+    def r(*paths):
+        return _rget(obj, *paths)
+
+    d = {}
+    d["venue"] = r("venue")
+    if d["venue"][0] is None:
+        tv, _ = _rget(top, "venue")
+        if tv is not None:
+            d["venue"] = (tv, "venue (top-level)")
+    v, p = r("script_version")
+    if v is None:
+        pb, _ = _rget(top, "produced_by")
+        if pb:
+            v, p = str(pb).replace("measure_ws.py", "").strip(), "produced_by"
+    d["version"] = (v, p)
+    d["symbols_count"] = r("symbols_count")
+    d["symbols_seen"] = r("symbols_seen")
+    d["window_s"] = r("window_s", "requested_seconds", "elapsed_s")
+    d["n_sessions"] = r("n_sessions")
+    if d["n_sessions"][0] is None:
+        d["n_sessions"] = (1, None)
+    d["msg_per_s"] = r("msg_per_s")
+    d["payload_bytes_per_s"] = r("payload_bytes_per_s")
+    d["wire_bytes_per_s"] = r("wire_bytes_per_s")
+    d["wire_bytes_total_per_s"] = r("wire_bytes_total_per_s")
+    d["business_messages"] = r("business_messages")
+    d["payload_bytes"] = r("payload_bytes")
+    d["wire_bytes"] = r("wire_bytes")
+    d["wire_bytes_total"] = r("wire_bytes_total")
+    d["size_min"] = r("size_bytes.min")
+    d["size_p50"] = r("size_bytes.p50")
+    d["size_p90"] = r("size_bytes.p90")
+    d["size_p99"] = r("size_bytes.p99")
+    d["size_max"] = r("size_bytes.max")
+    d["size_mean"] = r("size_bytes.mean")
+    d["deflate_status"] = r("deflate_status", "compression.deflate_status")
+    d["deflate_offered"] = r("deflate_offered", "compression.deflate_offered")
+    d["deflate_accepted"] = r("deflate_accepted", "compression.deflate_accepted")
+    d["deflate_offer_header"] = r("deflate_offer_header")
+    d["deflate_response_header"] = r("deflate_response_header")
+    d["deflate_measurement_offer_source"] = r("deflate_measurement_offer_source",
+                                              "deflate_offer_source")
+    d["compressed_frames"] = r("compressed_frames", "compression.compressed_frames")
+    d["inflate_failures"] = r("inflate_failures", "compression.inflate_failures")
+    d["subscribe_acks"] = r("subscribe_acks", "accounting.subscribe_acks")
+    d["control_frames"] = r("control_frames", "accounting.control_frames")
+    d["app_ping_frames"] = r("app_ping_frames", "accounting.app_ping_frames")
+    d["heartbeat_pings_sent"] = r("heartbeat_pings_sent")
+    d["heartbeat_pongs_received"] = r("heartbeat_pongs_received")
+    d["subscribe_messages_sent"] = r("subscribe_messages_sent",
+                                     "accounting.subscribe_messages_sent")
+    d["reconnects"] = r("reconnects")
+    d["collection_complete"] = r("collection_complete", "integrity.collection_complete")
+    d["error"] = r("error", "integrity.error")
+    d["first_msg_latency_ms"] = r("first_msg_latency_ms", "integrity.first_msg_latency_ms")
+    return d
+
+
+_METRIC_GROUPS = [
+    ("Throughput — business traffic only", [
+        ("msg/s", "msg_per_s"),
+        ("payload B/s (post-inflate)", "payload_bytes_per_s"),
+        ("wire B/s (frame bytes as read)", "wire_bytes_per_s"),
+    ]),
+    ("Session totals — business traffic only", [
+        ("business messages (frames)", "business_messages"),
+        ("payload bytes (post-inflate)", "payload_bytes"),
+        ("wire bytes (as-read)", "wire_bytes"),
+        ("wire bytes total (incl. heartbeats/acks/control)", "wire_bytes_total"),
+    ]),
+    ("Per-message size (JSON `size_bytes`)", [
+        ("min", "size_min"),
+        ("p50", "size_p50"),
+        ("p90", "size_p90"),
+        ("p99", "size_p99"),
+        ("max", "size_max"),
+        ("mean", "size_mean"),
+    ]),
+    ("Counted separately — excluded from business metrics", [
+        ("subscribe acks", "subscribe_acks"),
+        ("control frames (RFC 6455 ping/pong/close)", "control_frames"),
+        ("application ping frames", "app_ping_frames"),
+        ("heartbeat pings sent (client)", "heartbeat_pings_sent"),
+        ("heartbeat pongs received", "heartbeat_pongs_received"),
+        ("subscribe messages sent", "subscribe_messages_sent"),
+    ]),
+    ("Compression negotiation", [
+        ("deflate_state", "deflate_status"),
+        ("deflate_offered", "deflate_offered"),
+        ("deflate_accepted", "deflate_accepted"),
+        ("compressed frames", "compressed_frames"),
+        ("inflate failures", "inflate_failures"),
+    ]),
+]
+
+
+def _session_col(x):
+    return str(x["venue"][0]) if x["venue"][0] is not None else "session"
+
+
+def _fmt_num(v):
+    if v is None:
+        return "n/a"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return f"{v:,}"
+    if isinstance(v, float):
+        s = f"{v:,.3f}"
+        if "." in s:
+            s = s.rstrip("0").rstrip(".")
+        return s
+    return str(v)
+
+
+def _first_field(sessions, key):
+    for x in sessions:
+        if x.get(key) and x[key][1]:
+            return x[key][1]
+    return None
+
+
+def _cell_text(rec, empty_label):
+    """header 字符串单元格：字段缺失 → not published；值为空 → empty_label。"""
+    v, p = rec
+    if p is None:
+        return "not published"
+    if v is None or v == "":
+        return empty_label
+    return "`" + str(v) + "`"
+
+
+def load_session_doc(path):
+    """读既有场次 JSON → {'meta':..,'sessions':[..],'source':path}。零网络。"""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except OSError as e:
+        raise SystemExit(f"--from-json 打不开 {path}: {e}")
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"--from-json JSON 解析失败 {path}: {e}")
+    if not isinstance(raw, dict):
+        raise SystemExit(f"--from-json 顶层不是 JSON 对象：{path}")
+    if isinstance(raw.get("results"), list):
+        meta, sessions = raw, raw["results"]
+    elif isinstance(raw.get("sessions"), list):
+        meta, sessions = raw, raw["sessions"]
+    elif isinstance(raw.get("measured_session"), dict):
+        meta, sessions = raw, [raw["measured_session"]]
+    elif "venue" in raw:
+        meta, sessions = raw, [raw]
+    else:
+        raise SystemExit("--from-json 认不出场次结构（需要 results[] / sessions[] / "
+                         "measured_session）：" + str(path))
+    if not sessions:
+        raise SystemExit(f"--from-json 场次列表为空：{path}")
+    return {"meta": meta, "sessions": sessions, "source": path}
+
+
+def _reproduce_line(meta, reproduce_hint):
+    if reproduce_hint:
+        return _sanitize(reproduce_hint)
+    r = meta.get("reproduce")
+    if isinstance(r, list) and r:
+        return _sanitize(" ; ".join(str(x) for x in r))
+    if isinstance(r, str) and r:
+        return _sanitize(r)
+    return "python3 measure_ws.py --from-json <workdir>/<session>.json --report md"
+
+
+def _report_context(doc, reproduce_hint=None):
+    meta = doc["meta"]
+    sessions = [_norm_session(meta, s) for s in doc["sessions"]]
+    probe = meta.get("probe_results")
+    return {
+        "meta": meta,
+        "sessions": sessions,
+        "reproduce": _reproduce_line(meta, reproduce_hint),
+        "observed": _rget(meta, "observed_on", "generated_at"),
+        "probe_results": probe if isinstance(probe, list) else None,
+        "source": doc.get("source"),
+    }
+
+
+def _venue_title(ctx):
+    vs = [str(x["venue"][0]) for x in ctx["sessions"] if x["venue"][0] is not None]
+    if not vs:
+        return "session"
+    if len(vs) == 1:
+        return vs[0]
+    if len(vs) == 2:
+        return vs[0] + " vs " + vs[1]
+    return ", ".join(vs)
+
+
+def _join_nums(vals):
+    return " / ".join(_fmt_num(v) for v in vals)
+
+
+def _header_rows(ctx):
+    s = ctx["sessions"]
+    venues = [str(x["venue"][0]) for x in s if x["venue"][0] is not None]
+    syms = sorted({x["symbols_count"][0] for x in s if x["symbols_count"][0] is not None})
+    seen = sorted({x["symbols_seen"][0] for x in s if x["symbols_seen"][0] is not None})
+    wins = sorted({x["window_s"][0] for x in s if x["window_s"][0] is not None})
+    vers = sorted({str(x["version"][0]) for x in s if x["version"][0] is not None})
+    obs = ctx["observed"][0]
+    sym_txt = (_join_nums(syms) + " requested") if syms else "n/a"
+    if seen:
+        sym_txt += " / " + _join_nums(seen) + " seen"
+    win_txt = (_join_nums(wins) + " s per session, clock starts after subscribe") if wins else "n/a"
+    src = os.path.basename(ctx["source"]) if ctx.get("source") else "n/a"
+    return [
+        ("Venue(s)", ", ".join(venues) if venues else "n/a"),
+        ("Symbols", sym_txt),
+        ("Window", win_txt),
+        ("Observed (no calendar start is recorded)", str(obs) if obs is not None else "n/a"),
+        ("Tool", "measure_ws.py " + (", ".join(vers) if vers else "n/a")),
+        ("Source JSON (basename)", src),
+        ("Sessions (n)", str(len(s))),
+        ("Reproduce (one line)", ctx["reproduce"]),
+    ]
+
+
+def _md_table(ctx, rows):
+    s = ctx["sessions"]
+    cols = [_session_col(x) for x in s]
+    out = ["| Metric | " + " | ".join(cols) + " | Source field |",
+           "|:--|" + ":--:|" * len(cols) + ":--|"]
+    for label, key in rows:
+        cells = [_fmt_num(x[key][0]) for x in s]
+        field = _first_field(s, key)
+        out.append("| " + label + " | " + " | ".join(cells) + " | "
+                   + ("`" + field + "`" if field else "—") + " |")
+    return "\n".join(out)
+
+
+def _html_table(ctx, rows):
+    s = ctx["sessions"]
+    cols = "".join("<th>" + _esc(_session_col(x)) + "</th>" for x in s)
+    body = []
+    for label, key in rows:
+        cells = "".join('<td class="n">' + _esc(_fmt_num(x[key][0])) + "</td>" for x in s)
+        field = _first_field(s, key)
+        fcell = _esc(field) if field else "—"
+        body.append('<tr><th scope="row">' + _esc(label) + "</th>" + cells
+                     + '<td class="f">' + fcell + "</td></tr>")
+    return ('<table><thead><tr><th>Metric</th>' + cols
+            + '<th class="f">Source field</th></tr></thead><tbody>'
+            + "".join(body) + "</tbody></table>")
+
+
+def _declaration_md(ctx):
+    s = ctx["sessions"]
+    obs = ctx["observed"][0]
+    wins = sorted({x["window_s"][0] for x in s if x["window_s"][0] is not None})
+    win_txt = _join_nums(wins) if wins else "n/a"
+    out = []
+    out.append("1. **Business message** — one inbound data frame, excluding RFC 6455 control "
+               "frames, application heartbeats and subscribe acks; **inbound only**; fragments "
+               "not reassembled.")
+    for x in s:
+        out.append("   *" + _session_col(x) + ": business_messages="
+                   + _fmt_num(x["business_messages"][0])
+                   + ", excluded — control_frames=" + _fmt_num(x["control_frames"][0])
+                   + ", app_ping_frames=" + _fmt_num(x["app_ping_frames"][0])
+                   + ", subscribe_acks=" + _fmt_num(x["subscribe_acks"][0])
+                   + ", heartbeat_pongs_received="
+                   + _fmt_num(x["heartbeat_pongs_received"][0]) + ".*")
+    out.append("")
+    out.append("2. **Payload vs. wire** — bytes are **payload (post-inflate)** / **wire (frame "
+               "bytes as read, header included, compressed when the frame arrived compressed)**; "
+               "TLS/TCP/IP excluded; server→client only (client→server not measured).")
+    for x in s:
+        out.append("   *" + _session_col(x) + ": payload_bytes="
+                   + _fmt_num(x["payload_bytes"][0]) + ", wire_bytes="
+                   + _fmt_num(x["wire_bytes"][0]) + ".*")
+    out.append("")
+    out.append("3. **Compression-negotiation state** — one of the four states "
+               "(`not_offered` / `server_refused` / `accepted` / `unsolicited`), never a "
+               "boolean, with both header strings (see the compression section above).")
+    out.append("")
+    out.append("4. **Egress and window** — observed "
+               + (str(obs) if obs is not None else "n/a")
+               + "; window " + win_txt + " s starting **after subscribe**; " + str(len(s))
+               + " session(s); reconnects "
+               + _fmt_num(s[0]["reconnects"][0] if s else None)
+               + "; egress " + REPORT_EGRESS + ".")
+    return "\n".join(out)
+
+
+def _limitations_md(ctx):
+    s = ctx["sessions"]
+    return "\n".join([
+        "- **Single observation is not a distribution.** Session-level rates move with market "
+        "activity; a bare number is not a fact about a venue (README §5.1). This report covers "
+        "n = " + str(len(s)) + " session(s): " + ", ".join(_session_col(x) for x in s) + ".",
+        "- **Same-venue session-to-session variation can exceed the between-venue gap.** Two "
+        "venues measured on one day are one paired observation, not a separation; a ratio here "
+        "is not a stable venue property (SPEC §4, README §5.1).",
+        "- **Rate-type quantities (msg/s, B/s) are not decidable at narrow separation** without "
+        "repeated sessions or a stated tolerance; this report makes no venue-ordering claim.",
+        "- Not implemented — declare yourself: fragmentation reassembly (one frame = one "
+        "message); TLS/TCP/IP overhead; client→server bytes; calendar **start** timestamp (none "
+        "recorded); egress region/ASN (proxy string only, redacted here); semantic equivalence "
+        "across venues is not validated; the message classifier is venue-configured "
+        "(SPEC §1.1–§1.4, README §5).",
+        "- `inflate_failures > 0` or `rsv1_without_deflate > 0` invalidates the size "
+        "distribution for that session (README §5.3–§5.4).",
+        "- Per-message **p95 is not a field this tool emits**: `size_bytes` carries "
+        "min/p50/p90/p99/max/mean. It is left out rather than estimated.",
+        "- Curated or hand-added fields (e.g. `n_sessions`) are labelled by their source; "
+        "absent fields read `n/a`.",
+    ])
+
+
+def _render_md(ctx):
+    s = ctx["sessions"]
+    L = ["# Wire-audit report — " + _venue_title(ctx), ""]
+    L.append("*Generated by `measure_ws.py` report mode (" + SCRIPT_VERSION + "). Every figure "
+             "is traced to a source-JSON field in the last column; missing fields read `n/a` — "
+             "never estimated, never interpolated.*")
+    L.append("")
+    for label, value in _header_rows(ctx):
+        if label.startswith("Reproduce"):
+            L.append("- **" + label + ":** `" + value + "`")
+        else:
+            L.append("- **" + label + ":** " + value)
+    L.append("")
+    for title, rows in _METRIC_GROUPS:
+        L.append("### " + title)
+        L.append("")
+        L.append(_md_table(ctx, rows))
+        L.append("")
+    L.append("### Compression negotiation — offer/response headers")
+    L.append("")
+    for x in s:
+        L.append("- **" + _session_col(x) + "** — state `"
+                 + _fmt_num(x["deflate_status"][0]) + "`; offer "
+                 + _cell_text(x["deflate_offer_header"], "none offered")
+                 + "; 101-response extension header: "
+                 + _cell_text(x["deflate_response_header"], "none sent")
+                 + "; measurement-offer source: "
+                 + _cell_text(x["deflate_measurement_offer_source"], "not published") + ".")
+    L.append("")
+    L.append("Four-state definition (SPEC §1.3): `not_offered` / `server_refused` / `accepted` "
+             "/ `unsolicited` — never a boolean.")
+    L.append("")
+    if ctx["probe_results"]:
+        L.append("### Compression offer ladder (probe)")
+        L.append("")
+        L.append("| Offer | Probe status |")
+        L.append("|:--|:--|")
+        for pr in ctx["probe_results"]:
+            L.append("| `" + str(pr.get("offer")) + "` | `" + str(pr.get("status")) + "` |")
+        L.append("")
+    L.append("### Caliber declaration (SPEC.md §1 — the four declarations)")
+    L.append("")
+    L.append(_declaration_md(ctx))
+    L.append("")
+    L.append("### Limitations and what was / was not measured")
+    L.append("")
+    L.append(_limitations_md(ctx))
+    L.append("")
+    L.append("### Reproduce")
+    L.append("")
+    L.append("```console")
+    L.append(ctx["reproduce"])
+    L.append("```")
+    L.append("")
+    L.append("---")
+    L.append("")
+    L.append("Source: ws-wire-audit — https://github.com/Robin1987China/ws-wire-audit "
+             "(SPEC.md, README.md, LICENSE)")
+    return "\n".join(L) + "\n"
+
+
+_HTML_CSS = (
+    ":root{color-scheme:light dark}"
+    "body{font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,"
+    "sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;color:#1b1f23}"
+    "h1{font-size:1.4rem;border-bottom:2px solid #333;padding-bottom:.3rem}"
+    "h2{font-size:1.05rem;margin-top:1.6rem}"
+    "table{border-collapse:collapse;width:100%;margin:.6rem 0;font-size:13px}"
+    "th,td{border:1px solid #ccc;padding:4px 8px;text-align:left;vertical-align:top}"
+    "thead th{background:#f2f2f2}"
+    "td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}"
+    "td.f,th.f{color:#666;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}"
+    "code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}"
+    "pre{background:#f6f8fa;border:1px solid #ddd;padding:.6rem;overflow:auto;font-size:12.5px}"
+    "dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;margin:.5rem 0}"
+    "dt{font-weight:600}dd{margin:0}"
+    "footer{margin-top:2rem;border-top:1px solid #ccc;padding-top:.6rem;color:#666;font-size:13px}"
+)
+
+
+def _render_html(ctx):
+    s = ctx["sessions"]
+    obs = ctx["observed"][0]
+    wins = sorted({x["window_s"][0] for x in s if x["window_s"][0] is not None})
+    win_txt = _join_nums(wins) if wins else "n/a"
+    P = []
+    P.append("<!DOCTYPE html>")
+    P.append('<html lang="en"><head><meta charset="utf-8">')
+    P.append('<meta name="viewport" content="width=device-width, initial-scale=1">')
+    P.append("<title>" + _esc("Wire-audit report — " + _venue_title(ctx)) + "</title>")
+    P.append("<style>" + _HTML_CSS + "</style>")
+    P.append("</head><body>")
+    P.append("<h1>Wire-audit report — " + _esc(_venue_title(ctx)) + "</h1>")
+    P.append("<p><em>Generated by <code>measure_ws.py</code> report mode (" + SCRIPT_VERSION
+             + "). Every figure is traced to a source-JSON field in the last column; missing "
+             "fields read <code>n/a</code> — never estimated, never interpolated.</em></p>")
+    P.append('<dl>')
+    for label, value in _header_rows(ctx):
+        vhtml = "<code>" + _esc(value) + "</code>" if label.startswith("Reproduce") else _esc(value)
+        P.append("<dt>" + _esc(label) + "</dt><dd>" + vhtml + "</dd>")
+    P.append("</dl>")
+    for title, rows in _METRIC_GROUPS:
+        P.append("<h2>" + _esc(title) + "</h2>")
+        P.append(_html_table(ctx, rows))
+    P.append("<h2>Compression negotiation — offer/response headers</h2>")
+    P.append("<ul>")
+    for x in s:
+        P.append("<li><strong>" + _esc(_session_col(x)) + "</strong> — state <code>"
+                 + _esc(_fmt_num(x["deflate_status"][0])) + "</code>; offer "
+                 + _esc(_cell_text(x["deflate_offer_header"], "none offered"))
+                 + "; 101-response extension header: "
+                 + _esc(_cell_text(x["deflate_response_header"], "none sent"))
+                 + "; measurement-offer source: "
+                 + _esc(_cell_text(x["deflate_measurement_offer_source"], "not published"))
+                 + ".</li>")
+    P.append("</ul>")
+    P.append("<p>Four-state definition (SPEC §1.3): <code>not_offered</code> / "
+             "<code>server_refused</code> / <code>accepted</code> / <code>unsolicited</code> "
+             "— never a boolean.</p>")
+    if ctx["probe_results"]:
+        P.append("<h2>Compression offer ladder (probe)</h2>")
+        P.append("<table><thead><tr><th>Offer</th><th>Probe status</th></tr></thead><tbody>")
+        for pr in ctx["probe_results"]:
+            P.append("<tr><td><code>" + _esc(str(pr.get("offer"))) + "</code></td><td><code>"
+                     + _esc(str(pr.get("status"))) + "</code></td></tr>")
+        P.append("</tbody></table>")
+    P.append("<h2>Caliber declaration (SPEC.md §1 — the four declarations)</h2>")
+    P.append("<ol>")
+    P.append("<li><strong>Business message</strong> — one inbound data frame, excluding RFC 6455 "
+             "control frames, application heartbeats and subscribe acks; <strong>inbound "
+             "only</strong>; fragments not reassembled.<ul>")
+    for x in s:
+        P.append("<li><em>" + _esc(_session_col(x)) + ":</em> business_messages="
+                 + _esc(_fmt_num(x["business_messages"][0])) + ", excluded — control_frames="
+                 + _esc(_fmt_num(x["control_frames"][0])) + ", app_ping_frames="
+                 + _esc(_fmt_num(x["app_ping_frames"][0])) + ", subscribe_acks="
+                 + _esc(_fmt_num(x["subscribe_acks"][0])) + ", heartbeat_pongs_received="
+                 + _esc(_fmt_num(x["heartbeat_pongs_received"][0])) + ".</li>")
+    P.append("</ul></li>")
+    P.append("<li><strong>Payload vs. wire</strong> — bytes are <strong>payload (post-inflate)"
+             "</strong> / <strong>wire (frame bytes as read, header included, compressed when the "
+             "frame arrived compressed)</strong>; TLS/TCP/IP excluded; server→client only "
+             "(client→server not measured).<ul>")
+    for x in s:
+        P.append("<li><em>" + _esc(_session_col(x)) + ":</em> payload_bytes="
+                 + _esc(_fmt_num(x["payload_bytes"][0])) + ", wire_bytes="
+                 + _esc(_fmt_num(x["wire_bytes"][0])) + ".</li>")
+    P.append("</ul></li>")
+    P.append("<li><strong>Compression-negotiation state</strong> — one of the four states "
+             "(<code>not_offered</code> / <code>server_refused</code> / <code>accepted</code> / "
+             "<code>unsolicited</code>), never a boolean, with both header strings.</li>")
+    P.append("<li><strong>Egress and window</strong> — observed "
+             + _esc(str(obs) if obs is not None else "n/a") + "; window " + _esc(win_txt)
+             + " s starting <strong>after subscribe</strong>; " + _esc(str(len(s)))
+             + " session(s); reconnects "
+             + _esc(_fmt_num(s[0]["reconnects"][0] if s else None)) + "; egress "
+             + _esc(REPORT_EGRESS) + ".</li>")
+    P.append("</ol>")
+    P.append("<h2>Limitations and what was / was not measured</h2>")
+    P.append("<ul>")
+    lim = _limitations_md(ctx).split("\n")
+    for line in lim:
+        txt = line[2:] if line.startswith("- ") else line
+        P.append("<li>" + _esc(txt).replace("&quot;", '"') + "</li>")
+    P.append("</ul>")
+    P.append("<h2>Reproduce</h2>")
+    P.append("<pre><code>" + _esc(ctx["reproduce"]) + "</code></pre>")
+    P.append("<footer>Source: ws-wire-audit — "
+             '<a href="https://github.com/Robin1987China/ws-wire-audit">'
+             "github.com/Robin1987China/ws-wire-audit</a> (SPEC.md, README.md, LICENSE).</footer>")
+    P.append("</body></html>")
+    return "\n".join(P) + "\n"
+
+
+def render_report(doc, fmt, reproduce_hint=None):
+    ctx = _report_context(doc, reproduce_hint)
+    if fmt == "html":
+        return _render_html(ctx)
+    if fmt == "md":
+        return _render_md(ctx)
+    raise SystemExit("未知报告格式：" + str(fmt))
+
+
+def _default_report_path(src, fmt):
+    ext = "md" if fmt == "md" else "html"
+    return os.path.splitext(src)[0] + ".report." + ext
+
+
+def _live_reproduce_cmd(a, duration):
+    """从本次运行的参数合成一行复现命令（本地路径脱敏为 <workdir>）。"""
+    parts = ["python3 measure_ws.py", "--venue", str(a.venue),
+             "--duration", str(duration)]
+    if getattr(a, "symbols_file", None):
+        parts += ["--symbols-file", str(a.symbols_file)]
+    elif getattr(a, "raw_symbols", None):
+        parts += ["--raw-symbols", str(a.raw_symbols)]
+    elif getattr(a, "symbols", None):
+        parts += ["--symbols", str(a.symbols)]
+    if getattr(a, "deflate_ladder", False):
+        parts.append("--deflate-ladder")
+    elif getattr(a, "deflate_offer", None):
+        parts += ["--deflate-offer", str(a.deflate_offer)]
+    elif getattr(a, "deflate", False):
+        parts.append("--deflate")
+    if getattr(a, "probe", False):
+        parts.append("--probe")
+    parts += ["--out", str(a.out)]
+    return _sanitize(" ".join(parts))
+
+
+def write_report(doc, fmt, out_path, reproduce_hint=None):
+    text = render_report(doc, fmt, reproduce_hint=reproduce_hint)
+    _assert_report_clean(text)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return out_path
+
+
 # ---------------------------------------------------------------- 离线自测（零网络）
 def _selftest():
     """离线断言（零网络）：用**伪造的握手响应/帧字节流**验证协商解析与计数口径。
@@ -1189,6 +1779,13 @@ def main():
                     help="任一**测量**场次出现 error / collection_complete=False / inflate_failures>0 / "
                          "rsv1_without_deflate>0 时以退出码 1 结束（适合脚本/监控自动化）")
     ap.add_argument("--version", action="store_true", help="打印版本并退出")
+    ap.add_argument("--report", choices=list(REPORT_FORMATS), default="none",
+                    help="测量后直接输出人可读报告：md=Markdown，html=自包含 HTML（内联 CSS，"
+                         "无 CDN/字体/脚本外链），none=不生成（默认）")
+    ap.add_argument("--report-out", default=None,
+                    help="报告输出路径（默认：run=基于 --out 派生；--from-json=源文件旁 .report.<ext>）")
+    ap.add_argument("--from-json", default=None,
+                    help="从既有场次 JSON 生成报告（不连任何服务端；未给 --report 时默认 md）")
     a = ap.parse_args()
 
     if a.version:
@@ -1197,6 +1794,14 @@ def main():
 
     if a.selftest:
         return _selftest()
+
+    if a.from_json:
+        fmt = a.report if a.report in ("md", "html") else "md"
+        doc = load_session_doc(a.from_json)
+        out_path = a.report_out or _default_report_path(a.from_json, fmt)
+        write_report(doc, fmt, out_path)
+        print(f"\n写入报告 {out_path}")
+        return 0
 
     duration: int = 60
     if a.probe:
@@ -1263,17 +1868,26 @@ def main():
               f"inflate_fail={r.get('inflate_failures')}  rsv1_no_deflate={r.get('rsv1_without_deflate')}",
               flush=True)
 
+    summary = {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "script_version": SCRIPT_VERSION,
+        "seconds_per_venue": duration,
+        "deflate_offer_headers": offers,
+        "method": ("single connection per venue, sequential, no reconnect, no keys, "
+                   "public channels only"),
+        "results": results,
+    }
     with open(a.out, "w", encoding="utf-8") as f:
-        json.dump({
-            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            "script_version": SCRIPT_VERSION,
-            "seconds_per_venue": duration,
-            "deflate_offer_headers": offers,
-            "method": ("single connection per venue, sequential, no reconnect, no keys, "
-                       "public channels only"),
-            "results": results,
-        }, f, ensure_ascii=False, indent=2)
+        json.dump(summary, f, ensure_ascii=False, indent=2)
     print(f"\n写入 {a.out}")
+
+    if a.report != "none":
+        meta = {k: v for k, v in summary.items() if k != "results"}
+        meta["reproduce"] = [_live_reproduce_cmd(a, duration)]
+        doc = {"meta": meta, "sessions": results, "source": a.out}
+        out_path = a.report_out or _default_report_path(a.out, a.report)
+        write_report(doc, a.report, out_path)
+        print(f"写入报告 {out_path}")
 
     if a.strict:
         bad = [r for r in results
