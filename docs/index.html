@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Five-Venue WebSocket Feed Comparison — Same Caliber</title>
+<style>
+  :root{
+    --fg:#1a1a1a; --muted:#5b6470; --line:#d8dde3; --bg:#ffffff;
+    --accent:#0b5cad; --head:#f4f6f8; --warn:#8a1c1c; --warnbg:#fdf6f6;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:24px 18px 64px}
+  h1{font-size:1.65rem; line-height:1.25; margin:0 0 .35em}
+  h2{font-size:1.18rem; margin:1.9em 0 .5em; padding-bottom:.18em; border-bottom:1px solid var(--line)}
+  h3{font-size:1rem; margin:1.3em 0 .4em}
+  p{margin:.55em 0}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .sub{color:var(--muted); font-size:.95rem; margin:.2em 0 .1em}
+  .zh{font-size:.9rem; color:var(--muted)}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+  code{font-size:.88em; background:#f2f4f7; padding:1px 4px; border-radius:3px}
+  pre{background:var(--head); border:1px solid var(--line); border-radius:4px; padding:10px 12px; overflow-x:auto; font-size:12.5px; line-height:1.5}
+  .tablewrap{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:.5em 0 1.2em}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  caption{caption-side:top; text-align:left; font-weight:600; margin:.1em 0 .45em; font-size:.95rem}
+  th,td{border:1px solid var(--line); padding:6px 8px; vertical-align:top; text-align:left}
+  thead th{background:var(--head); white-space:nowrap}
+  tbody th{font-weight:600; background:#fafbfc; white-space:nowrap}
+  .num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .nowrap{white-space:nowrap}
+  .limits{border-left:4px solid var(--warn); background:var(--warnbg); padding:12px 16px 6px; border-radius:0 4px 4px 0; margin:1.2em 0}
+  .limits h2{color:var(--warn); border-bottom-color:#e6c9c9; margin-top:.1em}
+  .limits strong{color:var(--warn)}
+  .note{color:var(--muted); font-size:12.5px; margin:.3em 0 1em}
+  ul{margin:.4em 0 .9em; padding-left:1.25em}
+  li{margin:.3em 0}
+  .cta{background:#f2f7fd; border:1px solid #cfe0f3; border-radius:4px; padding:12px 14px; margin:1em 0}
+  footer{margin-top:2.4em; padding-top:1em; border-top:1px solid var(--line); color:var(--muted); font-size:12.5px}
+  .kbd{font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Five-Venue WebSocket Market-Data Comparison — Same Caliber</h1>
+  <p class="sub">Wire-level traffic of five public crypto-spot trade feeds over one WebSocket connection, measured with the same tool, window and caliber.</p>
+  <p class="zh">五种现货行情 WebSocket 推送的同口径对照页 · 页面上的每个数字都可回源到仓内 <code>examples/</code> 的场次 JSON。</p>
+</header>
+
+<p>
+This is a single self-contained page: one clickable link a post or article can cite, instead of a repository.
+It reports what a feed actually put on the wire — message rate, byte rate, message size, compression state,
+subscription acks, control frames and heartbeats — for <strong>LBank, Binance, Bybit, OKX and Kraken</strong>,
+under one declared caliber.
+</p>
+<p>
+<strong>It is not a venue ranking.</strong> Most rows are <em>single observations</em>; two venues reach n=3.
+Read the <a href="#limits">Limits</a> section before quoting any number. Numbers here are observations under a
+declared caliber, not properties of a venue.
+</p>
+
+<h2 id="caliber">Caliber — the four declarations (summary of SPEC)</h2>
+<p>Per the repository's SPEC, two numbers are comparable only if these four quantities are declared:</p>
+<ol>
+  <li><strong>Business-message definition</strong> — one inbound data frame, excluding RFC&nbsp;6455 control frames, application heartbeats and subscribe acks; inbound only; fragments not reassembled.</li>
+  <li><strong>Payload vs. wire bytes</strong> — <code>payload</code> = inbound bytes after decompression; <code>wire</code> = on-wire WebSocket frame bytes as read (header included, compressed bytes if the frame arrived compressed). Both exclude TLS/TCP/IP overhead; client&rarr;server is not measured.</li>
+  <li><strong>Compression-negotiation state</strong> — four states, never a boolean: <code>not_offered</code> / <code>server_refused</code> / <code>accepted</code> / <code>unsolicited</code>.</li>
+  <li><strong>Egress and observation window</strong> — calendar time, window length and start point (after subscribe), sessions run, reconnects, and egress region/ASN.</li>
+</ol>
+<p class="note">
+Full text: <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/SPEC.md">SPEC.md</a>.
+Caliber used for every row on this page: business message = non-heartbeat inbound data frame;
+bytes = wire (as-read) and payload (post-inflate), one direction; compression state per venue (below);
+window = 600&nbsp;s starting after subscribe; one connection per venue, no reconnect, no concurrency, one egress
+(AS4812, China Telecom) observed 2026-09-22 and 2026-09-29/30 GMT+8.
+</p>
+
+<h2 id="venues">1. Same-caliber comparison (600 s single sessions)</h2>
+<div class="tablewrap">
+<table>
+  <caption>Table 1 — Five venues, 600 s sessions, one connection each, no reconnect, one egress. Ranges are given where n&gt;1.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Venue</th>
+      <th scope="col">Symbols req/seen</th>
+      <th scope="col">Sessions (n)</th>
+      <th scope="col" class="num">msg/s</th>
+      <th scope="col" class="num">wire B/s</th>
+      <th scope="col" class="num">payload B/s</th>
+      <th scope="col" class="num">msg p50 (B)</th>
+      <th scope="col">Compression (session)</th>
+      <th scope="col" class="num">Subscribe acks</th>
+      <th scope="col" class="num">Control frames</th>
+      <th scope="col" class="num">Venue heartbeat frames</th>
+      <th scope="col">Evidence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">LBank</th>
+      <td class="nowrap">159 / 159</td>
+      <td>1</td>
+      <td class="num">90.514</td>
+      <td class="num">17,438.7</td>
+      <td class="num">17,076.6</td>
+      <td class="num">188</td>
+      <td><code>not_offered</code></td>
+      <td class="num">0</td>
+      <td class="num">0</td>
+      <td class="num">— (app-ping 10)</td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></td>
+    </tr>
+    <tr>
+      <th scope="row">Binance</th>
+      <td class="nowrap">159 / 159</td>
+      <td>1</td>
+      <td class="num">376.245</td>
+      <td class="num">51,255.0</td>
+      <td class="num">49,750.1</td>
+      <td class="num">132</td>
+      <td><code>not_offered</code></td>
+      <td class="num">1</td>
+      <td class="num">30</td>
+      <td class="num">0</td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></td>
+    </tr>
+    <tr>
+      <th scope="row">Bybit</th>
+      <td class="nowrap">103 / 94–98</td>
+      <td>3</td>
+      <td class="num">15.478–26.951</td>
+      <td class="num">5,619.8–10,159.5</td>
+      <td class="num">5,558.0–10,051.7</td>
+      <td class="num">217</td>
+      <td><code>not_offered</code></td>
+      <td class="num">11</td>
+      <td class="num">0</td>
+      <td class="num">0 (app-ping 2–14)</td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/04-bybit-103pairs-600s-20260929.json">04</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/11-bybit-103pairs-600s-20260930-r2.json">11</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/13-bybit-103pairs-600s-20260930-r3.json">13</a></td>
+    </tr>
+    <tr>
+      <th scope="row">OKX</th>
+      <td class="nowrap">110 / 102</td>
+      <td>1</td>
+      <td class="num">35.330</td>
+      <td class="num">6,568.7</td>
+      <td class="num">6,427.4</td>
+      <td class="num">182</td>
+      <td><code>not_offered</code></td>
+      <td class="num">110</td>
+      <td class="num">0</td>
+      <td class="num">2</td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/05-okx-110pairs-600s-20260929.json">05</a></td>
+    </tr>
+    <tr>
+      <th scope="row">Kraken</th>
+      <td class="nowrap">20 / 12–15</td>
+      <td>3</td>
+      <td class="num">0.160–0.392</td>
+      <td class="num">39.2–84.8</td>
+      <td class="num">38.5–83.2</td>
+      <td class="num">194–195</td>
+      <td><code>not_offered</code></td>
+      <td class="num">20</td>
+      <td class="num">0</td>
+      <td class="num">622–623</td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/06-kraken-20pairs-600s-20260929.json">06</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/12-kraken-20pairs-600s-20260930-r2.json">12</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/14-kraken-20pairs-600s-20260930-r3.json">14</a></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p class="note">
+Symbol counts are each venue's intersection with a 159-asset watchlist, so the symbol set differs per venue
+(Bybit 103, OKX 110, Kraken 20) — same ruler, different symbol sets, not a same-symbols comparison.
+"Venue heartbeat frames" = application-level keepalive frames sent by the venue and excluded from business
+metrics; "app-ping" counts inbound application ping frames, also excluded. LBank's 600 s row predates the
+venue-heartbeat field and records app-ping = 10 only.
+</p>
+
+<h2 id="spread">2. Observed spread where n&gt;1</h2>
+<p>Bybit and Kraken each have n=3 same-caliber 600 s sessions. Per-session values and the spread below.</p>
+<div class="tablewrap">
+<table>
+  <caption>Table 2 — Per-session values and cross-session spread for the two venues with n=3.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Venue</th>
+      <th scope="col">Session</th>
+      <th scope="col" class="num">msg/s</th>
+      <th scope="col" class="num">wire B/s</th>
+      <th scope="col" class="num">payload B/s</th>
+      <th scope="col" class="num">Heartbeat frames</th>
+      <th scope="col">Evidence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><th scope="row">Bybit</th><td>r1 (2026-09-29)</td><td class="num">26.951</td><td class="num">10,159.5</td><td class="num">10,051.7</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/04-bybit-103pairs-600s-20260929.json">04</a></td></tr>
+    <tr><th scope="row">Bybit</th><td>r2 (2026-09-30)</td><td class="num">16.579</td><td class="num">5,946.5</td><td class="num">5,880.2</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/11-bybit-103pairs-600s-20260930-r2.json">11</a></td></tr>
+    <tr><th scope="row">Bybit</th><td>r3 (2026-09-30)</td><td class="num">15.478</td><td class="num">5,619.8</td><td class="num">5,558.0</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/13-bybit-103pairs-600s-20260930-r3.json">13</a></td></tr>
+    <tr><th scope="row">Bybit</th><td class="kbd">spread (n=3)</td><td class="num">+74.1%</td><td class="num">+80.8%</td><td class="num">+80.9%</td><td class="num">—</td><td class="note">[15.478, 26.951] · [5,619.8, 10,159.5]</td></tr>
+    <tr><th scope="row">Kraken</th><td>r1 (2026-09-29)</td><td class="num">0.276</td><td class="num">61.0</td><td class="num">59.9</td><td class="num">623</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/06-kraken-20pairs-600s-20260929.json">06</a></td></tr>
+    <tr><th scope="row">Kraken</th><td>r2 (2026-09-30)</td><td class="num">0.392</td><td class="num">84.8</td><td class="num">83.2</td><td class="num">622</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/12-kraken-20pairs-600s-20260930-r2.json">12</a></td></tr>
+    <tr><th scope="row">Kraken</th><td>r3 (2026-09-30)</td><td class="num">0.160</td><td class="num">39.2</td><td class="num">38.5</td><td class="num">622</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/14-kraken-20pairs-600s-20260930-r3.json">14</a></td></tr>
+    <tr><th scope="row">Kraken</th><td class="kbd">spread (n=3)</td><td class="num">+145.0%</td><td class="num">+116.3%</td><td class="num">+116.1%</td><td class="num">≈0%</td><td class="note">[0.160, 0.392] · [39.2, 84.8]</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note">Spread = max/min − 1 across the n sessions. Payload spreads are computed from the three session files. Kraken's heartbeat count is essentially constant (622–623) across sessions.</p>
+
+<h2 id="compression">3. Compression: measured state vs. capability</h2>
+<p>Every 600 s session above was measured with <strong>no compression offer</strong> — the session state is
+<code>not_offered</code> for all five venues. Capability is a separate question, probed with a 60 s offer ladder
+(three <code>permessage-deflate</code> variants, three symbols).</p>
+<div class="tablewrap">
+<table>
+  <caption>Table 3 — Compression-negotiation state of the measured sessions and of a separate capability probe.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Venue</th>
+      <th scope="col">Session state (600 s)</th>
+      <th scope="col">Capability probe (60 s)</th>
+      <th scope="col" class="num">Compressed frames</th>
+      <th scope="col">Evidence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><th scope="row">LBank</th><td><code>not_offered</code></td><td><code>server_refused</code> (3/3 variants)</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/03-lbank-deflate-ladder-probe.json">03</a></td></tr>
+    <tr><th scope="row">Binance</th><td><code>not_offered</code></td><td><code>accepted</code></td><td class="num">62,058</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/02-permessage-deflate-negotiation.md">02</a></td></tr>
+    <tr><th scope="row">Bybit</th><td><code>not_offered</code></td><td><code>accepted</code></td><td class="num">313</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/07-bybit-deflate-ladder-20260929.json">07</a></td></tr>
+    <tr><th scope="row">OKX</th><td><code>not_offered</code></td><td><code>accepted</code></td><td class="num">5</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/08-okx-deflate-ladder-20260929.json">08</a></td></tr>
+    <tr><th scope="row">Kraken</th><td><code>not_offered</code></td><td><code>server_refused</code> (3/3 variants)</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/09-kraken-deflate-ladder-20260929.json">09</a></td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note">
+<code>accepted</code> does not mean <em>every</em> frame was compressed: OKX accepted the extension but only
+<strong>5 of 387</strong> frames carried a compressed payload (its probe wire 1,199.5&nbsp;B/s &asymp; payload
+1,173.9&nbsp;B/s). Bybit's probe compressed 313 frames (wire 958.9&nbsp;B/s vs. payload 2,583.0&nbsp;B/s — the
+payload figure is larger, i.e. it is the post-inflate size). The 60 s ladder <em>probes</em> capability; the
+measured 600 s sessions themselves carried no offer.
+</p>
+
+<div class="limits">
+<h2 id="limits">4. Limits — read before citing any number</h2>
+<ul>
+  <li><strong>Single vs. multiple observations.</strong> LBank, Binance and OKX are each <strong>n=1</strong> —
+      one session is an observation, not a distribution. Only Bybit and Kraken reach <strong>n=3</strong>.</li>
+  <li><strong>A venue's own cross-session variation is as large as some between-venue gaps.</strong>
+      Bybit's wire-rate spread is <strong>+80.8%</strong> and Kraken's <strong>+116.3%</strong> across their
+      three sessions — each is at least as large as the gap between several venues. A single-session
+      byte-rate ordering whose gap is smaller than the venue's own spread cannot be attributed to the venue:
+      Bybit's n=3 range <strong>[5,619.8, 10,159.5]</strong> straddles OKX's 6,568.7, so the n=1 claim
+      "Bybit &gt; OKX by wire B/s" does <strong>not</strong> hold.</li>
+  <li><strong>Rate-type quantities are not decidable at narrow gaps.</strong> A same-window interleaved A/B
+      (Bybit vs. OKX alternating, 6 rounds &times; 60 s) found the byte-rate ordering <em>not decidable</em>:
+      the paired A−B sign flips once within the window. Message-rate direction and per-message size were
+      decidable in that run; byte rate was not. Treat all byte-rate orderings with &lt; ~1.8&times; separation as
+      undecided at n=1.</li>
+  <li><strong>Kraken is not a suitable throughput sample.</strong> In all three sessions, business frames
+      (96–235) are <em>fewer</em> than the venue's heartbeat frames (622–623, &asymp;1 frame/s). At
+      39–85&nbsp;B/s the absolute volume is minuscule, so its +116% spread is a relative figure on a tiny base
+      and must not be read alongside Bybit/Binance spreads. Its USDT books are thin because most of its
+      assets quote in USD, which was not measured here.</li>
+  <li><strong>Structural quantities are stable; rate quantities are not.</strong> Subscribe acks
+      (LBank 0, Binance 1, Bybit 11, OKX 110, Kraken 20), control frames (only Binance 30) and the
+      compression states were constant across sessions — they are not affected by the rate spread.</li>
+  <li><strong>Different symbol sets.</strong> Each venue was measured on its intersection with a 159-asset
+      watchlist (Bybit 103, OKX 110, Kraken 20), not on a common symbol set.</li>
+  <li><strong>One egress.</strong> All sessions ran from a single egress (AS4812). A different region may
+      change these results; re-measure before generalising.</li>
+</ul>
+</div>
+
+<h2 id="reproduce">5. Reproduce</h2>
+<p>One command reproduces a session of this shape (the tool and watchlist are in the repository):</p>
+<pre><code>python3 measure_ws.py --venue bybit --symbols-file &lt;symbols-file&gt; --duration 600 --out &lt;workdir&gt;/bybit-600s.json</code></pre>
+<p class="note">
+<code>&lt;symbols-file&gt;</code> is the 159-asset watchlist restricted to the venue's listed pairs
+(see the per-venue counts in Table&nbsp;1); <code>&lt;workdir&gt;</code> is any output directory.
+The tool uses the standard library only and contacts public, unauthenticated endpoints.
+</p>
+<div class="cta">
+  <p><strong>Repository:</strong> <a href="https://github.com/Robin1987China/ws-wire-audit">github.com/Robin1987China/ws-wire-audit</a>
+     &nbsp;·&nbsp; <strong>Rule:</strong> <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/SPEC.md">SPEC.md</a></p>
+  <p class="note" style="margin-bottom:0">
+  SPEC four declarations, in one line: declare (1) what counts as a business message, (2) whether byte counts
+  are payload or wire, (3) the compression-negotiation state (four states, not a boolean), and (4) the egress and
+  observation window — before comparing any two feeds. Two numbers produced under undeclared or differing
+  choices of these four are not a comparison, even when both are correct.
+  </p>
+</div>
+
+<h2 id="evidence">6. Evidence index</h2>
+<p class="note">
+Every figure above traces to a session JSON in the repository's <code>examples/</code> directory. Files
+<code>01</code>–<code>03</code> are on the default branch; the extended session outputs <code>04</code>–<code>15</code>
+are carried on branch <code>main</code>, which is where those links resolve.
+</p>
+<div class="tablewrap">
+<table>
+  <caption>Table 4 — Source files.</caption>
+  <thead>
+    <tr><th scope="col">File</th><th scope="col">What it holds</th></tr>
+  </thead>
+  <tbody>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></th><td>LBank vs. Binance, 159 pairs, 600 s</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/02-permessage-deflate-negotiation.md">02</a></th><td>permessage-deflate negotiation probe, LBank vs. Binance (numbers)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/03-lbank-deflate-ladder-probe.json">03</a></th><td>LBank response to three permessage-deflate offer variants</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/04-bybit-103pairs-600s-20260929.json">04</a></th><td>Bybit, 103 pairs, 600 s (r1)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/05-okx-110pairs-600s-20260929.json">05</a></th><td>OKX (trades-all), 110 pairs, 600 s</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/06-kraken-20pairs-600s-20260929.json">06</a></th><td>Kraken, 20 pairs, 600 s (r1)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/07-bybit-deflate-ladder-20260929.json">07</a></th><td>Bybit compression ladder probe (60 s)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/08-okx-deflate-ladder-20260929.json">08</a></th><td>OKX compression ladder probe (60 s)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/09-kraken-deflate-ladder-20260929.json">09</a></th><td>Kraken compression ladder probe (60 s)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/10-five-venue-600s-20260929.json">10</a></th><td>Curated five-venue 600 s comparison + derived ratios</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/11-bybit-103pairs-600s-20260930-r2.json">11</a></th><td>Bybit, 103 pairs, 600 s (r2)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/12-kraken-20pairs-600s-20260930-r2.json">12</a></th><td>Kraken, 20 pairs, 600 s (r2)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/13-bybit-103pairs-600s-20260930-r3.json">13</a></th><td>Bybit, 103 pairs, 600 s (r3)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/14-kraken-20pairs-600s-20260930-r3.json">14</a></th><td>Kraken, 20 pairs, 600 s (r3)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/15-interleaved-bybit-okx-20260930.json">15</a></th><td>Interleaved same-window A/B (Bybit vs. OKX), paired diffs + verdict</td></tr>
+  </tbody>
+</table>
+</div>
+
+<footer>
+  <p>
+    Aggregated session statistics only; no raw tick data. Author identity per the repository LICENSE.
+    This page is static, self-contained, and loads no external resources.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
