@@ -1,0 +1,66 @@
+{
+  "declaration_version": "1.0",
+  "status": "proposed",
+  "observation": {
+    "venue": "lbank",
+    "symbols_requested": 159,
+    "symbols_succeeded": 159,
+    "start": "2026-09-22T00:00:00",
+    "end": "2026-09-22T00:10:00",
+    "duration_s": 600.0,
+    "exit_code": 0,
+    "tool": "measure_ws.py",
+    "tool_version": "v1.3",
+    "egress": "unknown"
+  },
+  "business_message": {
+    "definition": "one inbound data frame, excluding control frames, application heartbeats and subscribe acks; inbound only; fragments not reassembled",
+    "direction": "inbound",
+    "excludes_control_frames": true,
+    "excludes_heartbeats": true,
+    "excludes_acks": true,
+    "reassembles_fragments": false
+  },
+  "bytes": {
+    "wire_includes_frame_header": true,
+    "payload_is_post_inflate": true,
+    "direction": "server_to_client",
+    "includes_tls_tcp_ip": false,
+    "client_uplink_measured": false
+  },
+  "compression": {
+    "state": "not_offered",
+    "offered_header": null,
+    "response_header": null,
+    "probe": [],
+    "probe_method": "none",
+    "measurement_offer_source": "none"
+  },
+  "metrics": {
+    "business_messages": 54309,
+    "msg_per_s": 90.514,
+    "wire_bytes": 10463286,
+    "wire_bytes_per_s": 17438.7,
+    "payload_bytes": 10246050,
+    "payload_bytes_per_s": 17076.6,
+    "wire_bytes_total": 10463706,
+    "size_bytes": {
+      "min": 178,
+      "p50": 188,
+      "p90": 193,
+      "p99": 202,
+      "max": 209,
+      "mean": 188.7
+    },
+    "acks": 0,
+    "control_frames": 0,
+    "heartbeat_frames": 10
+  },
+  "checksum": {
+    "capture_sha256": "96ee00879b71fc3fb9212e92ef7c5e4afb81b3711943bb59202b747421c8e900",
+    "algorithm": "sha256"
+  },
+  "reproduce": [
+    "python3 measure_ws.py --venue lbank --symbols-file symbols159.json --duration 600 --out lbank_600s.json"
+  ]
+}
