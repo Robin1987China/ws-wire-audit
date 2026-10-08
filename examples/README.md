@@ -20,6 +20,17 @@ data, no raw per-symbol message dumps, no raw response bodies.
 | `13-bybit-103pairs-600s-20260930-r3.json` | Same-caliber 600 s session, Bybit spot — 103 pairs, repeat #3 | `bybit` 600 s, 2026-09-30 |
 | `14-kraken-20pairs-600s-20260930-r3.json` | Same-caliber 600 s session, Kraken v2 `trade` — 20 pairs, repeat #3 | `kraken` 600 s, 2026-09-30 |
 | `15-interleaved-bybit-okx-20260930.json` | **Interleaved same-window A/B**: Bybit vs OKX alternating (A 60 s → B 60 s × 6 rounds), per-session start/end timestamps, per-round paired diffs + mechanical verdict | `bybit`/`okx` interleaved, 2026-09-30 19:04–19:17 |
+| `16-lbank-159pairs-600s-20261007-r2.json` | Same-caliber 600 s session, LBank spot — 159 pairs, repeat #2 (n=3 aggregate with `01`+`18`) | `lbank` 600 s, 2026-10-07 |
+| `17-binance-159pairs-600s-20261007-r2.json` | Same-caliber 600 s session, Binance spot — 159 pairs, repeat #2 (n=3 aggregate with `01`+`19`) | `binance` 600 s, 2026-10-07 |
+| `18-lbank-159pairs-600s-20261008-r3.json` | Same-caliber 600 s session, LBank spot — 159 pairs, repeat #3 | `lbank` 600 s, 2026-10-08 |
+| `19-binance-159pairs-600s-20261008-r3.json` | Same-caliber 600 s session, Binance spot — 159 pairs, repeat #3 | `binance` 600 s, 2026-10-08 |
+>
+> **Note (2026-10-08, LBank/Binance thickening):** entries `16`–`19` raise LBank and Binance to
+> **n=3** same-caliber 600 s sessions each (with `01`). Cross-session `wire B/s` ranges: LBank
+> 15,947.1–19,525.1 (+22.4%); Binance 18,261.3–51,255.0 (+180.7%). Binance's own range
+> **overlaps** LBank's, so the n=1 ranking "Binance > LBank by `wire B/s`" is **not decidable**;
+> the message-rate direction survives (Binance `msg/s` min 134.289 > LBank max 101.272, ~1.33x).
+> Watchlist: `symbols159.txt`. No tool change (still v1.4).
 >
 > **Note (2026-09-29):** entries `04`–`10` are the *raw* session outputs of the
 > extension run (they carry `symbols_requested`, handshake header list, per-symbol
@@ -33,6 +44,7 @@ data, no raw per-symbol message dumps, no raw response bodies.
 > the small-gap **byte-rate** ordering (Bybit vs OKX `wire B/s`) is **not decidable** (paired-diff
 > sign flips once, monotonic drift within the 12-min window), while the **message-rate direction**
 > and **per-message size** are decidable. No tool change (still v1.4).
+> **Note (2026-09-30, thickening):** the
 > thickening run (`RUN-20260930-thicken.sh`), raising Bybit and Kraken to n=3
 > same-caliber 600 s sessions. Cross-session ranges: Bybit `wire B/s`
 > 5,619.8–10,159.5 (+80.8%); Kraken 39.2–84.8 (+116.3%, but business frames

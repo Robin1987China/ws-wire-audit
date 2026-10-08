@@ -62,7 +62,7 @@ subscription acks, control frames and heartbeats — for <strong>LBank, Binance,
 under one declared caliber.
 </p>
 <p>
-<strong>It is not a venue ranking.</strong> Most rows are <em>single observations</em>; two venues reach n=3.
+<strong>It is not a venue ranking.</strong> OKX is a single observation; the other four venues reach n=3.
 Read the <a href="#limits">Limits</a> section before quoting any number. Numbers here are observations under a
 declared caliber, not properties of a venue.
 </p>
@@ -80,7 +80,7 @@ Full text: <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/SP
 Caliber used for every row on this page: business message = non-heartbeat inbound data frame;
 bytes = wire (as-read) and payload (post-inflate), one direction; compression state per venue (below);
 window = 600&nbsp;s starting after subscribe; one connection per venue, no reconnect, no concurrency, one egress
-(AS4812, China Telecom) observed 2026-09-22 and 2026-09-29/30 GMT+8.
+(AS4812, China Telecom) observed 2026-09-22, 2026-09-29/30 and 2026-10-07/08 GMT+8.
 </p>
 
 <h2 id="venues">1. Same-caliber comparison (600 s single sessions)</h2>
@@ -106,31 +106,35 @@ window = 600&nbsp;s starting after subscribe; one connection per venue, no recon
   <tbody>
     <tr>
       <th scope="row">LBank</th>
-      <td class="nowrap">159 / 159</td>
-      <td>1</td>
-      <td class="num">90.514</td>
-      <td class="num">17,438.7</td>
-      <td class="num">17,076.6</td>
-      <td class="num">188</td>
+      <td class="nowrap">159 / 158–159</td>
+      <td>3</td>
+      <td class="num">82.697–101.272</td>
+      <td class="num">15,947.1–19,525.1</td>
+      <td class="num">15,616.3–19,120.1</td>
+      <td class="num">188–189</td>
       <td><code>not_offered</code></td>
       <td class="num">0</td>
       <td class="num">0</td>
       <td class="num">— (app-ping 10)</td>
-      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/16-lbank-159pairs-600s-20261007-r2.json">16</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/18-lbank-159pairs-600s-20261008-r3.json">18</a></td>
     </tr>
     <tr>
       <th scope="row">Binance</th>
-      <td class="nowrap">159 / 159</td>
-      <td>1</td>
-      <td class="num">376.245</td>
-      <td class="num">51,255.0</td>
-      <td class="num">49,750.1</td>
-      <td class="num">132</td>
+      <td class="nowrap">159 / 157–159</td>
+      <td>3</td>
+      <td class="num">134.289–376.245</td>
+      <td class="num">18,261.3–51,255.0</td>
+      <td class="num">17,724.1–49,750.1</td>
+      <td class="num">132–133</td>
       <td><code>not_offered</code></td>
       <td class="num">1</td>
       <td class="num">30</td>
       <td class="num">0</td>
-      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></td>
+      <td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/17-binance-159pairs-600s-20261007-r2.json">17</a>
+          <a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/19-binance-159pairs-600s-20261008-r3.json">19</a></td>
     </tr>
     <tr>
       <th scope="row">Bybit</th>
@@ -190,10 +194,10 @@ venue-heartbeat field and records app-ping = 10 only.
 </p>
 
 <h2 id="spread">2. Observed spread where n&gt;1</h2>
-<p>Bybit and Kraken each have n=3 same-caliber 600 s sessions. Per-session values and the spread below.</p>
+<p>LBank, Binance, Bybit and Kraken each have n=3 same-caliber 600 s sessions. Per-session values and the spread below.</p>
 <div class="tablewrap">
 <table>
-  <caption>Table 2 — Per-session values and cross-session spread for the two venues with n=3.</caption>
+  <caption>Table 2 — Per-session values and cross-session spread for the venues with n=3.</caption>
   <thead>
     <tr>
       <th scope="col">Venue</th>
@@ -206,6 +210,14 @@ venue-heartbeat field and records app-ping = 10 only.
     </tr>
   </thead>
   <tbody>
+    <tr><th scope="row">LBank</th><td>r1 (2026-09-22)</td><td class="num">90.514</td><td class="num">17,438.7</td><td class="num">17,076.6</td><td class="num">—</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></td></tr>
+    <tr><th scope="row">LBank</th><td>r2 (2026-10-07)</td><td class="num">101.272</td><td class="num">19,525.1</td><td class="num">19,120.1</td><td class="num">—</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/16-lbank-159pairs-600s-20261007-r2.json">16</a></td></tr>
+    <tr><th scope="row">LBank</th><td>r3 (2026-10-08)</td><td class="num">82.697</td><td class="num">15,947.1</td><td class="num">15,616.3</td><td class="num">—</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/18-lbank-159pairs-600s-20261008-r3.json">18</a></td></tr>
+    <tr><th scope="row">LBank</th><td class="kbd">spread (n=3)</td><td class="num">+22.5%</td><td class="num">+22.4%</td><td class="num">+22.4%</td><td class="num">—</td><td class="note">[82.697, 101.272] · [15,947.1, 19,525.1]</td></tr>
+    <tr><th scope="row">Binance</th><td>r1 (2026-09-22)</td><td class="num">376.245</td><td class="num">51,255.0</td><td class="num">49,750.1</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/01-lbank-vs-binance-159pairs-600s.json">01</a></td></tr>
+    <tr><th scope="row">Binance</th><td>r2 (2026-10-07)</td><td class="num">293.670</td><td class="num">40,081.3</td><td class="num">38,906.6</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/17-binance-159pairs-600s-20261007-r2.json">17</a></td></tr>
+    <tr><th scope="row">Binance</th><td>r3 (2026-10-08)</td><td class="num">134.289</td><td class="num">18,261.3</td><td class="num">17,724.1</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/19-binance-159pairs-600s-20261008-r3.json">19</a></td></tr>
+    <tr><th scope="row">Binance</th><td class="kbd">spread (n=3)</td><td class="num">+180.2%</td><td class="num">+180.7%</td><td class="num">+180.7%</td><td class="num">—</td><td class="note">[134.289, 376.245] · [18,261.3, 51,255.0]</td></tr>
     <tr><th scope="row">Bybit</th><td>r1 (2026-09-29)</td><td class="num">26.951</td><td class="num">10,159.5</td><td class="num">10,051.7</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/04-bybit-103pairs-600s-20260929.json">04</a></td></tr>
     <tr><th scope="row">Bybit</th><td>r2 (2026-09-30)</td><td class="num">16.579</td><td class="num">5,946.5</td><td class="num">5,880.2</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/11-bybit-103pairs-600s-20260930-r2.json">11</a></td></tr>
     <tr><th scope="row">Bybit</th><td>r3 (2026-09-30)</td><td class="num">15.478</td><td class="num">5,619.8</td><td class="num">5,558.0</td><td class="num">0</td><td><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/13-bybit-103pairs-600s-20260930-r3.json">13</a></td></tr>
@@ -255,19 +267,22 @@ measured 600 s sessions themselves carried no offer.
 <div class="limits">
 <h2 id="limits">4. Limits — read before citing any number</h2>
 <ul>
-  <li><strong>Single vs. multiple observations.</strong> LBank, Binance and OKX are each <strong>n=1</strong> —
-      one session is an observation, not a distribution. Only Bybit and Kraken reach <strong>n=3</strong>.</li>
+  <li><strong>Single vs. multiple observations.</strong> OKX is <strong>n=1</strong> — one session is an
+      observation, not a distribution. LBank, Binance, Bybit and Kraken each reach <strong>n=3</strong>.</li>
   <li><strong>A venue's own cross-session variation is as large as some between-venue gaps.</strong>
-      Bybit's wire-rate spread is <strong>+80.8%</strong> and Kraken's <strong>+116.3%</strong> across their
-      three sessions — each is at least as large as the gap between several venues. A single-session
-      byte-rate ordering whose gap is smaller than the venue's own spread cannot be attributed to the venue:
-      Bybit's n=3 range <strong>[5,619.8, 10,159.5]</strong> straddles OKX's 6,568.7, so the n=1 claim
-      "Bybit &gt; OKX by wire B/s" does <strong>not</strong> hold.</li>
+      Three-session wire-rate spreads: Binance <strong>+180.7%</strong>, Kraken <strong>+116.3%</strong>,
+      Bybit <strong>+80.8%</strong>, LBank <strong>+22.4%</strong> — each is at least as large as the gap
+      between several venues. A single-session byte-rate ordering whose gap is smaller than the venue's own
+      spread cannot be attributed to the venue: Bybit's n=3 range <strong>[5,619.8, 10,159.5]</strong> straddles
+      OKX's 6,568.7, so the n=1 claim "Bybit &gt; OKX by wire B/s" does <strong>not</strong> hold; and
+      Binance's n=3 range <strong>[18,261.3, 51,255.0]</strong> overlaps LBank's
+      <strong>[15,947.1, 19,525.1]</strong>, so the n=1 claim "Binance &gt; LBank by wire B/s" does
+      <strong>not</strong> hold either.</li>
   <li><strong>Rate-type quantities are not decidable at narrow gaps.</strong> A same-window interleaved A/B
       (Bybit vs. OKX alternating, 6 rounds &times; 60 s) found the byte-rate ordering <em>not decidable</em>:
       the paired A−B sign flips once within the window. Message-rate direction and per-message size were
-      decidable in that run; byte rate was not. Treat all byte-rate orderings with &lt; ~1.8&times; separation as
-      undecided at n=1.</li>
+      decidable in that run; byte rate was not. Treat all byte-rate orderings with &lt; ~2&times; separation as
+      undecided unless each venue has several sessions.</li>
   <li><strong>Kraken is not a suitable throughput sample.</strong> In all three sessions, business frames
       (96–235) are <em>fewer</em> than the venue's heartbeat frames (622–623, &asymp;1 frame/s). At
       39–85&nbsp;B/s the absolute volume is minuscule, so its +116% spread is a relative figure on a tiny base
@@ -305,7 +320,7 @@ The tool uses the standard library only and contacts public, unauthenticated end
 <h2 id="evidence">6. Evidence index</h2>
 <p class="note">
 Every figure above traces to a session JSON in the repository's <code>examples/</code> directory. Files
-<code>01</code>–<code>03</code> are on the default branch; the extended session outputs <code>04</code>–<code>15</code>
+<code>01</code>–<code>03</code> are on the default branch; the extended session outputs <code>04</code>–<code>19</code>
 are carried on branch <code>main</code>, which is where those links resolve.
 </p>
 <div class="tablewrap">
@@ -330,6 +345,10 @@ are carried on branch <code>main</code>, which is where those links resolve.
     <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/13-bybit-103pairs-600s-20260930-r3.json">13</a></th><td>Bybit, 103 pairs, 600 s (r3)</td></tr>
     <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/14-kraken-20pairs-600s-20260930-r3.json">14</a></th><td>Kraken, 20 pairs, 600 s (r3)</td></tr>
     <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/15-interleaved-bybit-okx-20260930.json">15</a></th><td>Interleaved same-window A/B (Bybit vs. OKX), paired diffs + verdict</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/16-lbank-159pairs-600s-20261007-r2.json">16</a></th><td>LBank, 159 pairs, 600 s (r2)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/17-binance-159pairs-600s-20261007-r2.json">17</a></th><td>Binance, 159 pairs, 600 s (r2)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/18-lbank-159pairs-600s-20261008-r3.json">18</a></th><td>LBank, 159 pairs, 600 s (r3)</td></tr>
+    <tr><th scope="row"><a href="https://github.com/Robin1987China/ws-wire-audit/blob/main/examples/19-binance-159pairs-600s-20261008-r3.json">19</a></th><td>Binance, 159 pairs, 600 s (r3)</td></tr>
   </tbody>
 </table>
 </div>
